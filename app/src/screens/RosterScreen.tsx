@@ -12,25 +12,29 @@ const OPTION_LABELS: [key: keyof Options, label: string][] = [
 interface Props {
   roster: readonly Member[];
   attend: Readonly<Record<string, boolean>>;
+  /** Derived tier per attending member — absent members are not in the map. */
+  tiers: ReadonlyMap<string, Tier>;
   opts: Options;
   attendCount: number;
   laneCount: number;
   editMode: boolean;
   onToggleEditMode: () => void;
   onToggleAttend: (id: string) => void;
-  /** Bulk attendance: check everyone, or clear the whole list. */
   onSetAllAttend: (attending: boolean) => void;
   onToggleOption: (key: keyof Options) => void;
   onEditMember: (member: Member) => void;
   onDeleteMember: (member: Member) => void;
-  onAddMember: (tier: Tier) => void;
+  onAddMembers: () => void;
   onLoadSample: () => void;
   onResetData: () => void;
 }
 
+const byScore = (a: Member, b: Member) => b.avg - a.avg || a.name.localeCompare(b.name, 'ko');
+
 export function RosterScreen({
   roster,
   attend,
+  tiers,
   opts,
   attendCount,
   laneCount,
@@ -41,14 +45,14 @@ export function RosterScreen({
   onToggleOption,
   onEditMember,
   onDeleteMember,
-  onAddMember,
+  onAddMembers,
   onLoadSample,
   onResetData,
 }: Props) {
-  const tierCounts = TIERS.map((t) => roster.filter((m) => m.tier === t && attend[m.id]).length);
-  const uneven = new Set(tierCounts.filter((c) => c > 0)).size > 1;
   const empty = roster.length === 0;
   const allAttending = attendCount === roster.length;
+  const tierCounts = TIERS.map((t) => [...tiers.values()].filter((v) => v === t).length);
+  const absent = roster.filter((m) => !attend[m.id]).sort(byScore);
 
   if (empty) {
     return (
@@ -59,12 +63,12 @@ export function RosterScreen({
         <div className="blank">
           <div className="blank__title">아직 멤버가 없어요</div>
           <div className="blank__sub">
-            이름과 에버리지를 등록하면
+            이름과 점수를 등록하면 점수 순위대로
             <br />
-            티어별로 균형 잡힌 레인을 배정해 드려요.
+            1·2·3티어가 자동으로 나뉘어 배정됩니다.
           </div>
-          <button type="button" className="blank__cta" onClick={() => onAddMember(1)}>
-            첫 멤버 추가하기
+          <button type="button" className="blank__cta" onClick={onAddMembers}>
+            멤버 등록하기
           </button>
           <button type="button" className="blank__ghost" onClick={onLoadSample}>
             예시 명단 30명으로 먼저 둘러보기
@@ -73,6 +77,44 @@ export function RosterScreen({
       </div>
     );
   }
+
+  const renderRow = (m: Member, tier: Tier | null) => (
+    <div className="memberRow" key={m.id}>
+      <button
+        type="button"
+        className="memberRow__main"
+        style={{ opacity: editMode || tier !== null ? 1 : 0.42 }}
+        onClick={() => (editMode ? onEditMember(m) : onToggleAttend(m.id))}
+        aria-pressed={editMode ? undefined : tier !== null}
+        aria-label={editMode ? `${m.name} 수정` : `${m.name} 참석 여부`}
+      >
+        <div
+          className="check"
+          style={{
+            background: tier === null ? 'transparent' : TIER_COLOR[tier],
+            borderColor: tier === null ? 'rgba(0,0,0,.2)' : TIER_COLOR[tier],
+          }}
+        >
+          {tier === null ? '' : '✓'}
+        </div>
+        <div className="memberRow__name">{m.name}</div>
+        <div className="memberRow__gender">{m.gender}</div>
+        <div className="memberRow__avg">{m.avg}</div>
+        {editMode && <div className="memberRow__edit">수정</div>}
+      </button>
+      {editMode && (
+        <button
+          type="button"
+          className="memberRow__del"
+          onClick={() => onDeleteMember(m)}
+          aria-label={`${m.name} 삭제`}
+          title={`${m.name} 삭제`}
+        >
+          ×
+        </button>
+      )}
+    </div>
+  );
 
   return (
     <>
@@ -99,7 +141,7 @@ export function RosterScreen({
         </div>
 
         <div className="rosterTools">
-          <button type="button" className="addMemberBtn" onClick={() => onAddMember(1)}>
+          <button type="button" className="addMemberBtn" onClick={onAddMembers}>
             <span className="addMemberBtn__plus">+</span> 멤버 추가
           </button>
           <button
@@ -122,9 +164,9 @@ export function RosterScreen({
           </div>
         </div>
 
-        {uneven && (
+        {attendCount > 0 && attendCount % 3 !== 0 && (
           <div className="notice">
-            티어별 인원이 달라요. 인원이 적은 티어 때문에 뒤쪽 레인은 2~3인으로 배정됩니다.
+            참석 인원이 3의 배수가 아니라, 남는 {attendCount % 3}명은 4인 레인으로 묶입니다.
           </div>
         )}
 
@@ -145,67 +187,32 @@ export function RosterScreen({
 
       <div className="tierGroups">
         {TIERS.map((tier) => {
-          const members = roster.filter((m) => m.tier === tier);
-          const present = members.filter((m) => attend[m.id]).length;
+          const members = roster
+            .filter((m) => tiers.get(m.id) === tier)
+            .sort(byScore);
+          if (members.length === 0) return null;
           return (
             <div className="tierGroup" key={tier}>
               <div className="tierGroup__head">
                 <div className="tierDot" style={{ background: TIER_COLOR[tier] }} />
                 <div className="tierGroup__label">{tier}티어</div>
-                <div className="tierGroup__count">
-                  {present} / {members.length}
-                </div>
+                <div className="tierGroup__count">{members.length}명</div>
               </div>
-              <div className="card">
-                {members.map((m) => {
-                  const on = attend[m.id] ?? false;
-                  return (
-                    <div className="memberRow" key={m.id}>
-                      {/* Edit mode swaps the row's job: attendance toggle -> open editor. */}
-                      <button
-                        type="button"
-                        className="memberRow__main"
-                        style={{ opacity: editMode || on ? 1 : 0.42 }}
-                        onClick={() => (editMode ? onEditMember(m) : onToggleAttend(m.id))}
-                        aria-pressed={editMode ? undefined : on}
-                        aria-label={editMode ? `${m.name} 수정` : `${m.name} 참석 여부`}
-                      >
-                        <div
-                          className="check"
-                          style={{
-                            background: on ? TIER_COLOR[tier] : 'transparent',
-                            borderColor: on ? TIER_COLOR[tier] : 'rgba(0,0,0,.2)',
-                          }}
-                        >
-                          {on ? '✓' : ''}
-                        </div>
-                        <div className="memberRow__name">{m.name}</div>
-                        <div className="memberRow__gender">{m.gender}</div>
-                        <div className="memberRow__avg">{m.avg}</div>
-                        {editMode && <div className="memberRow__edit">수정</div>}
-                      </button>
-                      {editMode && (
-                        <button
-                          type="button"
-                          className="memberRow__del"
-                          onClick={() => onDeleteMember(m)}
-                          aria-label={`${m.name} 삭제`}
-                          title={`${m.name} 삭제`}
-                        >
-                          ×
-                        </button>
-                      )}
-                    </div>
-                  );
-                })}
-                <button type="button" className="addRow" onClick={() => onAddMember(tier)}>
-                  <div className="addRow__plus">+</div>
-                  <div>{tier}티어에 멤버 추가</div>
-                </button>
-              </div>
+              <div className="card">{members.map((m) => renderRow(m, tier))}</div>
             </div>
           );
         })}
+
+        {absent.length > 0 && (
+          <div className="tierGroup">
+            <div className="tierGroup__head">
+              <div className="tierDot" style={{ background: '#C2C6CC' }} />
+              <div className="tierGroup__label">미참석</div>
+              <div className="tierGroup__count">{absent.length}명</div>
+            </div>
+            <div className="card">{absent.map((m) => renderRow(m, null))}</div>
+          </div>
+        )}
 
         {editMode && (
           <button type="button" className="resetData" onClick={onResetData}>

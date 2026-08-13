@@ -35,7 +35,9 @@ button {
   font: inherit;
   color: inherit;
   cursor: pointer;
-  text-align: inherit;
+  /* Keep the browser's centred default — the row-shaped buttons below are all
+     flex containers, so they lay their children out themselves. */
+  text-align: center;
 }
 
 input {
@@ -1460,6 +1462,153 @@ input {
   font-size: 20px;
   font-weight: 800;
   letter-spacing: -0.02em;
+}
+
+.sheet__hint {
+  font-size: 12px;
+  font-weight: 600;
+  color: #8a8f98;
+  line-height: 1.5;
+  margin-top: 6px;
+}
+
+/* ── Bulk entry rows: 이름 · 성별 · 점수 on one line ───────── */
+
+.bulkHead {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 16px;
+  padding: 0 2px;
+  font-size: 10.5px;
+  font-weight: 800;
+  color: #8a8f98;
+}
+
+.bulkHead__name {
+  flex: 1;
+  text-align: center;
+}
+
+.bulkHead__gender {
+  width: 64px;
+  text-align: center;
+}
+
+.bulkHead__avg {
+  width: 62px;
+  text-align: center;
+}
+
+.bulkHead__spacer {
+  width: 26px;
+}
+
+.bulkRows {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.bulkRow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.bulkRow__name,
+.bulkRow__avg {
+  height: 44px;
+  border-radius: 12px;
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  background: #fff;
+  font-size: 15px;
+  font-weight: 700;
+  min-width: 0;
+}
+
+.bulkRow__name {
+  flex: 1;
+  padding: 0 10px;
+  text-align: center;
+}
+
+.bulkRow__avg {
+  width: 62px;
+  flex: none;
+  padding: 0 8px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+.bulkRow__name:focus,
+.bulkRow__avg:focus {
+  outline: none;
+  border-color: #ff4a21;
+}
+
+.bulkRow__gender {
+  width: 64px;
+  flex: none;
+  display: flex;
+  height: 44px;
+  border-radius: 12px;
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  background: #fff;
+  overflow: hidden;
+}
+
+.bulkRow__g {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  font-weight: 800;
+  color: #9aa0a8;
+}
+
+.bulkRow__g--on {
+  background: #14161a;
+  color: #fff;
+}
+
+.bulkRow__del {
+  width: 26px;
+  flex: none;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 17px;
+  font-weight: 800;
+  color: #b7bbc1;
+  line-height: 1;
+}
+
+.bulkRow__del:hover {
+  color: #c93a16;
+}
+
+.bulkAdd {
+  width: 100%;
+  height: 44px;
+  margin-top: 8px;
+  border-radius: 12px;
+  border: 1px dashed rgba(0, 0, 0, 0.2);
+  background: transparent;
+  font-size: 13px;
+  font-weight: 800;
+  color: #6b6f76;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.bulkAdd:hover {
+  border-color: #ff4a21;
+  color: #ff4a21;
 }
 
 .field {

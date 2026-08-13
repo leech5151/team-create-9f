@@ -1,19 +1,20 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { BottomBar } from './components/BottomBar';
 import { InstallBanner } from './components/InstallBanner';
-import { MemberSheet, type EditorTarget, type MemberDraft } from './components/MemberSheet';
+import { AddMembersSheet, type MemberDraft } from './components/AddMembersSheet';
+import { MemberSheet, type MemberEdit } from './components/MemberSheet';
 import { RollOverlay } from './components/RollOverlay';
 import { ShareSheet } from './components/ShareSheet';
 import { useInstallPrompt } from './hooks/useInstallPrompt';
 import { useRoll } from './hooks/useRoll';
-import { buildLanes, buildQueue, laneAverage, laneCountFor } from './lib/assign';
+import { buildLanes, buildQueue, hydrateLanes, laneCountFor, tierMap } from './lib/assign';
 import { shareText } from './lib/format';
 import { clearState, initialState, loadState, saveState, type PersistedState } from './lib/storage';
 import { HistoryScreen } from './screens/HistoryScreen';
 import { DrawScreen } from './screens/DrawScreen';
 import { ResultScreen } from './screens/ResultScreen';
 import { RosterScreen } from './screens/RosterScreen';
-import type { Lane, Member, Options, ResultView, Screen, Tier } from './types';
+import type { Lane, Member, Options, Ranked, ResultView, Screen, Tier } from './types';
 
 const TOAST_MS = 1800;
 /** Longer, because the user has to notice the undo and reach for it. */
@@ -28,7 +29,8 @@ export default function App() {
   const [state, setState] = useState<PersistedState>(loadState);
   const [shareOpen, setShareOpen] = useState(false);
   const [editMode, setEditMode] = useState(false);
-  const [editor, setEditor] = useState<EditorTarget | null>(null);
+  const [editing, setEditing] = useState<Member | null>(null);
+  const [adding, setAdding] = useState(false);
   const [toast, setToast] = useState<{ message: string; action?: ToastAction } | null>(null);
   const toastTimer = useRef<number | undefined>(undefined);
   /** Pre-delete snapshot, restored by the toast's 실행 취소. */
@@ -63,30 +65,45 @@ export default function App() {
 
   /** Current draw's lanes, rehydrated from ids so roster edits flow through. */
   const lanes = useMemo<Lane[]>(
-    () =>
-      state.laneIds.map((ids, i) => {
-        const members = ids
-          .map((id) => byId.get(id))
-          .filter((m): m is Member => m !== undefined);
-        return { no: i + 1, members, avg: laneAverage(members) };
-      }),
+    () => hydrateLanes(state.laneIds, byId),
     [state.laneIds, byId],
   );
 
+  /** Tier per attending member — recomputed whenever scores or attendance change. */
+  const tiers = useMemo(() => tierMap(attending), [attending]);
+
+  /**
+   * Tiers as used by the draw in progress. Taken from the lanes themselves, not
+   * from current attendance, so the waiting list and the lane cards agree even
+   * if someone is checked in or out mid-draw.
+   */
+  const drawTiers = useMemo(() => {
+    const map = new Map<string, Tier>();
+    for (const lane of lanes) for (const m of lane.members) map.set(m.id, m.tier);
+    return map;
+  }, [lanes]);
+
   const plannedLaneCount = laneCountFor(attending);
   const placedSet = useMemo(() => new Set(state.placed), [state.placed]);
-  const waiting = useMemo(
+  const waiting = useMemo<Ranked[]>(
     () =>
       state.queue
         .filter((id) => !placedSet.has(id))
-        .map((id) => byId.get(id))
-        .filter((m): m is Member => m !== undefined),
-    [state.queue, placedSet, byId],
+        .map((id) => {
+          const m = byId.get(id);
+          return m ? { ...m, tier: drawTiers.get(id) ?? 3 } : undefined;
+        })
+        .filter((m): m is Ranked => m !== undefined),
+    [state.queue, placedSet, byId, drawTiers],
   );
   const revealedAll = state.queue.length > 0 && state.placed.length >= state.queue.length;
 
   const roll = useRoll(lanes.length);
-  const activeMember = roll.activeId ? byId.get(roll.activeId) ?? null : null;
+  const activeMember = useMemo<Ranked | null>(() => {
+    if (!roll.activeId) return null;
+    const m = byId.get(roll.activeId);
+    return m ? { ...m, tier: drawTiers.get(m.id) ?? 3 } : null;
+  }, [roll.activeId, byId, drawTiers]);
 
   /** History excluding the game on screen — what 중복 방지 actually scored against. */
   const priorHistory = useMemo(
@@ -107,26 +124,35 @@ export default function App() {
   const toggleOption = (key: keyof Options) =>
     setState((s) => ({ ...s, opts: { ...s.opts, [key]: !s.opts[key] } }));
 
-  const saveMember = (draft: MemberDraft) => {
+  /** Applies an edit to one existing member. Tier is not stored, so it follows the new score. */
+  const saveMemberEdit = (edit: MemberEdit) => {
+    if (!editing) return;
+    const id = editing.id;
+    setState((s) => ({
+      ...s,
+      roster: s.roster.map((m) => (m.id === id ? { ...m, ...edit } : m)),
+    }));
+    setEditing(null);
+  };
+
+  /** Appends a batch of new members, all marked attending. */
+  const addMembers = (drafts: MemberDraft[]) => {
     setState((s) => {
-      if (editor?.mode === 'edit') {
-        const id = editor.member.id;
-        return { ...s, roster: s.roster.map((m) => (m.id === id ? { ...m, ...draft } : m)) };
-      }
       // Monotonic suffix so an id is never reused after deletions.
-      const nextNum =
+      let next =
         s.roster.reduce((max, m) => {
           const n = Number(m.id.replace(/^m/, ''));
           return Number.isFinite(n) ? Math.max(max, n) : max;
         }, 0) + 1;
-      const id = `m${nextNum}`;
+      const added = drafts.map((d) => ({ id: `m${next++}`, ...d }));
       return {
         ...s,
-        roster: [...s.roster, { id, ...draft }],
-        attend: { ...s.attend, [id]: true },
+        roster: [...s.roster, ...added],
+        attend: { ...s.attend, ...Object.fromEntries(added.map((m) => [m.id, true])) },
       };
     });
-    setEditor(null);
+    setAdding(false);
+    flash(`${drafts.length}명을 등록했어요`);
   };
 
   /**
@@ -160,7 +186,7 @@ export default function App() {
           .filter((h) => h.lanes.length > 0),
       };
     });
-    setEditor(null);
+    setEditing(null);
     flash(`${member.name} 님을 삭제했어요`, {
       label: '실행 취소',
       run: () => {
@@ -352,9 +378,10 @@ export default function App() {
             onToggleAttend={toggleAttend}
             onSetAllAttend={setAllAttend}
             onToggleOption={toggleOption}
-            onEditMember={(member) => setEditor({ mode: 'edit', member })}
+            tiers={tiers}
+            onEditMember={setEditing}
             onDeleteMember={deleteMember}
-            onAddMember={(tier: Tier) => setEditor({ mode: 'add', tier })}
+            onAddMembers={() => setAdding(true)}
             onLoadSample={() => void loadSample()}
             onResetData={resetEverything}
           />
@@ -410,12 +437,15 @@ export default function App() {
         />
       )}
 
-      {editor && (
+      {adding && <AddMembersSheet onSave={addMembers} onClose={() => setAdding(false)} />}
+
+      {editing && (
         <MemberSheet
-          target={editor}
-          onSave={saveMember}
+          member={editing}
+          tier={tiers.get(editing.id) ?? null}
+          onSave={saveMemberEdit}
           onDelete={deleteMember}
-          onClose={() => setEditor(null)}
+          onClose={() => setEditing(null)}
         />
       )}
 

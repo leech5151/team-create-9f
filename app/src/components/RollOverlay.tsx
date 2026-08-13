@@ -1,10 +1,10 @@
-import type { Member, Phase } from '../types';
+import type { Phase, Ranked } from '../types';
 import { TIER_COLOR } from '../theme';
 
 interface Props {
   phase: Phase;
   rollNo: number;
-  member: Member | null;
+  member: Ranked | null;
   revealedAll: boolean;
 }
 

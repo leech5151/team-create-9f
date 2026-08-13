@@ -3,18 +3,26 @@ export type Gender = '남' | '여';
 
 export const TIERS: readonly Tier[] = [1, 2, 3];
 
+/**
+ * A club member. Tier is deliberately absent: it is not a stored property but
+ * a rank derived from `avg` across whoever is attending — see `assignTiers`.
+ */
 export interface Member {
   /** Stable id — survives renames, unlike the prototype which keyed on name. */
   id: string;
   name: string;
-  tier: Tier;
   gender: Gender;
   avg: number;
 }
 
+/** A member paired with the tier they fell into for a given attendance set. */
+export interface Ranked extends Member {
+  tier: Tier;
+}
+
 export interface Lane {
   no: number;
-  members: Member[];
+  members: Ranked[];
   avg: number;
 }
 

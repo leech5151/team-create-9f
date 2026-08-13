@@ -1,11 +1,11 @@
-import type { Lane, Member, Phase } from '../types';
+import type { Lane, Phase, Ranked } from '../types';
 import { TIERS } from '../types';
 import { TIER_COLOR } from '../theme';
 
 interface Props {
   game: number;
   lanes: readonly Lane[];
-  waiting: readonly Member[];
+  waiting: readonly Ranked[];
   placed: readonly string[];
   phase: Phase;
   /** Lane highlighted while a just-drawn number is on screen. */

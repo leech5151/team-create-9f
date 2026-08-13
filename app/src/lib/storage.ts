@@ -1,4 +1,4 @@
-import type { HistoryEntry, Member, Options, ResultView, Screen, Tier } from '../types';
+import type { HistoryEntry, Member, Options, ResultView, Screen } from '../types';
 
 const KEY = 'bowling-lane-draw/v1';
 
@@ -33,16 +33,17 @@ export function initialState(): PersistedState {
   };
 }
 
-const isTier = (v: unknown): v is Tier => v === 1 || v === 2 || v === 3;
-
+/**
+ * Members persisted by earlier versions carry a stored `tier`; it is ignored,
+ * since tier is now derived from `avg` at read time.
+ */
 function parseMember(raw: unknown): Member | null {
   if (typeof raw !== 'object' || raw === null) return null;
   const m = raw as Record<string, unknown>;
   if (typeof m.id !== 'string' || typeof m.name !== 'string') return null;
-  if (!isTier(m.tier)) return null;
   if (m.gender !== '남' && m.gender !== '여') return null;
   if (typeof m.avg !== 'number' || !Number.isFinite(m.avg)) return null;
-  return { id: m.id, name: m.name, tier: m.tier, gender: m.gender, avg: m.avg };
+  return { id: m.id, name: m.name, gender: m.gender, avg: m.avg };
 }
 
 const asIdList = (raw: unknown, known: ReadonlySet<string>): string[] =>
