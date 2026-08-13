@@ -13,6 +13,10 @@ html,
 body {
   margin: 0;
   padding: 0;
+  height: 100%;
+  /* The app column owns scrolling; the page itself must never scroll, or the
+     bottom bar and the absolutely-positioned overlays scroll away with it. */
+  overflow: hidden;
 }
 
 body {
@@ -89,7 +93,11 @@ input {
   width: 100%;
   max-width: 402px;
   margin: 0 auto;
-  min-height: 100dvh;
+  /* Exactly one viewport tall — never `min-height`, which would let a long
+     roster grow the container and defeat the inner scroll region. `dvh` tracks
+     the mobile browser's collapsing toolbar. */
+  height: 100vh;
+  height: 100dvh;
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -111,15 +119,18 @@ input {
 
 @media (min-width: 460px) {
   .app {
-    min-height: 100dvh;
     box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.06), 0 24px 60px rgba(0, 0, 0, 0.1);
   }
 }
 
 .app__scroll {
   flex: 1;
+  /* min-height:0 lets this flex child shrink below its content height, which is
+     what makes it — rather than the page — the thing that scrolls. */
+  min-height: 0;
   overflow-y: auto;
   overflow-x: hidden;
+  overscroll-behavior: contain;
   -webkit-overflow-scrolling: touch;
   /* 62px in the iOS mock; on real hardware the notch supplies most of it. */
   padding: calc(max(24px, env(safe-area-inset-top)) + 16px) 0 16px;
@@ -1316,6 +1327,7 @@ input {
   justify-content: center;
   padding: 24px;
   z-index: 80;
+  overscroll-behavior: contain;
 }
 
 .shareCard {
@@ -1407,6 +1419,7 @@ input {
   display: flex;
   align-items: flex-end;
   z-index: 90;
+  overscroll-behavior: contain;
 }
 
 .sheet {
