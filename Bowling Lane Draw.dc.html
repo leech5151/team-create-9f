@@ -1,0 +1,536 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet data-dc-atomics><meta name="design_doc_mode" content="canvas"><link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css"><style>body{margin:0;background:#EDEBE6;font-family:Pretendard,-apple-system,system-ui,sans-serif}a{color:#FF4A21}a:hover{color:#D93B16}@keyframes flipIn{0%{transform:rotateY(90deg) scale(.96);opacity:0}60%{transform:rotateY(-8deg) scale(1.01);opacity:1}100%{transform:rotateY(0) scale(1);opacity:1}}@keyframes riseIn{from{transform:translateY(10px);opacity:0}to{transform:none;opacity:1}}@keyframes slotSpin{0%{transform:translateY(0)}100%{transform:translateY(-1080px)}}.dv-turn{padding:40px 44px 32px;border-bottom:1px solid rgba(0,0,0,.08)}.dv-thd{display:flex;align-items:baseline;gap:10px;margin:0 0 20px}.dv-tid{font:600 10px ui-monospace,Menlo,monospace;padding:3px 7px;background:#1a1a1a;color:#fff;border-radius:4px;text-decoration:none}.dv-tname{font:600 13px/1.2 Pretendard,system-ui;color:#1a1a1a}.dv-opts{display:flex;flex-wrap:wrap;gap:34px;align-items:flex-start}.dv-opt{flex:none;display:flex;flex-direction:column;gap:9px;scroll-margin-top:16px}.dv-oid{font:600 10.5px ui-monospace,Menlo,monospace;padding:3px 7px;background:rgba(0,0,0,.08);color:#1a1a1a;border-radius:5px;text-decoration:none}.dv-olabel{display:flex;align-items:baseline;gap:8px;font:400 11.5px/1.3 Pretendard,system-ui;color:rgba(0,0,0,.55)}.dv-opt:target .dv-oid{background:#FF4A21;color:#fff}.dv-next{margin:24px 0 0;font:12px/1.6 Pretendard,system-ui;color:rgba(0,0,0,.5)}</style></helmet>
+
+<section class="dv-turn" id="t1">
+<div class="dv-thd"><a class="dv-tid" href="#t1">1</a><span class="dv-tname">레인 랜덤 배정 앱 — 프로토타입 + 대안</span></div>
+<div class="dv-opts">
+
+<div class="dv-opt" id="1a"><div class="dv-olabel"><a class="dv-oid" href="#1a">1a</a>동작하는 프로토타입 · 명단 → 본인이 이름 눌러 레인 뽑기 → 결과 → 기록</div>
+<x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" hint-size="402px,874px">
+<div style="height:874px;background:#F4F3F0;box-sizing:border-box;color:#14161A;position:relative;display:flex;flex-direction:column;overflow:hidden">
+<div style="flex:1;overflow:auto;padding:62px 0 16px">
+
+  <sc-if value="{{ isRoster }}" hint-placeholder-val="{{ true }}">
+  <div style="padding:8px 20px 0">
+    <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:12px">
+      <div>
+        <div style="font-size:12px;font-weight:600;letter-spacing:.08em;color:#8A8F98">8월 10일 · 정기모임</div>
+        <div style="font-size:30px;font-weight:800;letter-spacing:-.02em;margin-top:4px">참석 명단</div>
+      </div>
+      <div style="text-align:right"><div style="font-size:26px;font-weight:800;color:#FF4A21;line-height:1">{{ attendCount }}</div><div style="font-size:11px;color:#8A8F98;font-weight:600">/ {{ totalCount }}명</div></div>
+    </div>
+
+    <div style="display:flex;gap:8px;margin-top:16px">
+      <div style="flex:1;background:#fff;border-radius:14px;padding:12px 14px;border:1px solid rgba(0,0,0,.06)"><div style="font-size:11px;color:#8A8F98;font-weight:600">배정 레인</div><div style="font-size:19px;font-weight:800;margin-top:2px">{{ laneCount }}레인</div></div>
+      <div style="flex:1;background:#fff;border-radius:14px;padding:12px 14px;border:1px solid rgba(0,0,0,.06)"><div style="font-size:11px;color:#8A8F98;font-weight:600">티어 구성</div><div style="font-size:19px;font-weight:800;margin-top:2px">{{ tierSummary }}</div></div>
+    </div>
+    <sc-if value="{{ tierUneven }}" hint-placeholder-val="{{ false }}">
+      <div style="margin-top:8px;background:#FFF1EC;border:1px solid rgba(255,74,33,.25);border-radius:12px;padding:10px 12px;font-size:12px;font-weight:600;color:#C93A16;line-height:1.45">티어별 인원이 달라요. 남는 인원은 마지막 레인에 4인으로 묶입니다.</div>
+    </sc-if>
+
+    <div style="display:flex;gap:6px;margin-top:14px;flex-wrap:wrap">
+      <sc-for list="{{ optChips }}" as="o" hint-placeholder-count="3">
+        <div onClick="{{ o.onTap }}" style="padding:8px 12px;border-radius:999px;font-size:12px;font-weight:700;cursor:pointer;border:1px solid {{ o.border }};background:{{ o.bg }};color:{{ o.fg }}">{{ o.label }}</div>
+      </sc-for>
+    </div>
+  </div>
+
+  <div style="padding:18px 20px 0">
+    <sc-for list="{{ tierGroups }}" as="g" hint-placeholder-count="3">
+      <div style="margin-bottom:18px">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+          <div style="width:8px;height:8px;border-radius:3px;background:{{ g.color }}"></div>
+          <div style="font-size:13px;font-weight:800">{{ g.label }}</div>
+          <div style="font-size:11px;font-weight:600;color:#8A8F98">{{ g.count }}</div>
+        </div>
+        <div style="background:#fff;border-radius:16px;border:1px solid rgba(0,0,0,.06);overflow:hidden">
+          <sc-for list="{{ g.members }}" as="m" hint-placeholder-count="10">
+            <div onClick="{{ m.onTap }}" style="display:flex;align-items:center;gap:10px;padding:11px 14px;cursor:pointer;border-top:1px solid rgba(0,0,0,.05);opacity:{{ m.opacity }}">
+              <div style="width:20px;height:20px;border-radius:7px;border:1.5px solid {{ m.boxBorder }};background:{{ m.boxBg }};display:flex;align-items:center;justify-content:center;color:#fff;font-size:12px;font-weight:800">{{ m.check }}</div>
+              <div style="flex:1;font-size:15px;font-weight:700;letter-spacing:-.01em">{{ m.name }}</div>
+              <div style="font-size:11px;font-weight:700;color:#8A8F98">{{ m.gender }}</div>
+              <div style="font-size:13px;font-weight:800;font-variant-numeric:tabular-nums;color:#4A4F57">{{ m.avg }}</div>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+    </sc-for>
+  </div>
+  </sc-if>
+
+  <sc-if value="{{ isDraw }}" hint-placeholder-val="{{ false }}">
+  <div style="padding:8px 20px 0">
+    <div style="display:flex;align-items:baseline;justify-content:space-between">
+      <div style="font-size:12px;font-weight:700;letter-spacing:.08em;color:#8A8F98">GAME {{ game }} · 본인 차례에 직접 뽑기</div>
+      <div style="font-size:12px;font-weight:800;color:#8A8F98">{{ drawHint }}</div>
+    </div>
+
+    <sc-if value="{{ hasWaiting }}" hint-placeholder-val="{{ true }}">
+    <div style="margin-top:8px">
+      <div style="font-size:29px;font-weight:800;letter-spacing:-.03em">이름을 눌러 레인 뽑기</div>
+      <div style="font-size:13.5px;font-weight:600;color:#6B6F76;margin-top:5px">본인 이름을 누르면 레인이 랜덤으로 정해집니다</div>
+      <div style="display:flex;flex-direction:column;gap:12px;margin-top:18px">
+        <sc-for list="{{ waitingTiers }}" as="g" hint-placeholder-count="3">
+          <div style="display:flex;align-items:flex-start;gap:8px">
+            <div style="width:30px;height:30px;border-radius:10px;background:{{ g.color }};color:#fff;font-size:12px;font-weight:800;display:flex;align-items:center;justify-content:center;flex:none;margin-top:8px">{{ g.tier }}</div>
+            <div style="flex:1;display:flex;flex-wrap:wrap;gap:8px">
+              <sc-for list="{{ g.people }}" as="p" hint-placeholder-count="8">
+                <div onClick="{{ p.onTap }}" style="min-height:46px;display:flex;align-items:center;padding:0 16px;border-radius:14px;background:#fff;border:1px solid rgba(0,0,0,.09);font-size:16px;font-weight:700;letter-spacing:-.02em;cursor:pointer;opacity:{{ p.opacity }};box-shadow:0 1px 3px rgba(0,0,0,.05)" style-hover="border-color:#FF4A21;color:#FF4A21">{{ p.name }}</div>
+              </sc-for>
+              <sc-if value="{{ g.empty }}" hint-placeholder-val="{{ false }}">
+                <div style="padding:8px 12px;font-size:13px;font-weight:700;color:#B7BBC1">모두 배정됨</div>
+              </sc-if>
+            </div>
+          </div>
+        </sc-for>
+      </div>
+    </div>
+    </sc-if>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:16px">
+      <sc-for list="{{ lanes }}" as="l" hint-placeholder-count="8">
+        <div style="height:152px;border-radius:18px;background:{{ l.cardBg }};border:2px solid {{ l.cardBorder }};padding:11px;box-sizing:border-box;box-shadow:{{ l.shadow }};transition:border-color .25s ease,box-shadow .25s ease">
+          <div style="display:flex;align-items:baseline;justify-content:space-between">
+            <div style="font-size:13px;font-weight:800;color:{{ l.titleColor }};white-space:nowrap">{{ l.no }}번 레인</div>
+            <div style="font-size:10px;font-weight:800;color:{{ l.metaColor }}">{{ l.metaText }}</div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:6px;margin-top:10px">
+            <sc-for list="{{ l.slots }}" as="m" hint-placeholder-count="3">
+              <div style="display:flex;align-items:center;gap:7px;height:26px;border-radius:9px;padding:0 7px;box-sizing:border-box;background:{{ m.rowBg }};animation:{{ m.anim }}">
+                <div style="width:16px;height:16px;border-radius:5px;background:{{ m.chipBg }};color:{{ m.chipFg }};font-size:9px;font-weight:800;display:flex;align-items:center;justify-content:center;flex:none">{{ m.tier }}</div>
+                <div style="flex:1;font-size:13px;font-weight:700;letter-spacing:-.01em;color:{{ m.nameColor }}">{{ m.label }}</div>
+                <div style="font-size:11px;font-weight:700;color:#8A8F98;font-variant-numeric:tabular-nums">{{ m.avgText }}</div>
+                <sc-if value="{{ m.canUndo }}" hint-placeholder-val="{{ false }}">
+                  <div onClick="{{ m.onUndo }}" title="배정 취소" style="width:20px;height:20px;border-radius:7px;background:rgba(0,0,0,.07);color:#8A8F98;font-size:12px;font-weight:800;line-height:1;display:flex;align-items:center;justify-content:center;cursor:pointer;flex:none" style-hover="background:#FF4A21;color:#fff">×</div>
+                </sc-if>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+      </sc-for>
+    </div>
+  </div>
+  </sc-if>
+
+  <sc-if value="{{ isResult }}" hint-placeholder-val="{{ false }}">
+  <div style="padding:8px 20px 0">
+    <div style="display:flex;align-items:flex-end;justify-content:space-between">
+      <div style="flex:1;min-width:0">
+        <div style="font-size:12px;font-weight:700;letter-spacing:.08em;color:#8A8F98;white-space:nowrap">GAME {{ game }} · {{ attendCount }}명 {{ laneCount }}레인</div>
+        <div style="font-size:30px;font-weight:800;letter-spacing:-.02em;margin-top:4px">배정 완료</div>
+      </div>
+      <div onClick="{{ onShare }}" style="padding:9px 14px;border-radius:999px;background:#14161A;color:#fff;font-size:12px;font-weight:800;cursor:pointer">공유</div>
+    </div>
+    <div style="display:flex;gap:6px;margin-top:12px;flex-wrap:wrap">
+      <sc-for list="{{ resultBadges }}" as="b" hint-placeholder-count="3">
+        <div style="padding:6px 10px;border-radius:8px;background:#fff;border:1px solid rgba(0,0,0,.07);font-size:11px;font-weight:700;color:#4A4F57">{{ b.text }}</div>
+      </sc-for>
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:10px;margin-top:16px">
+      <sc-for list="{{ lanes }}" as="l" hint-placeholder-count="8">
+        <div style="background:#fff;border-radius:16px;border:1px solid rgba(0,0,0,.06);padding:12px 14px;animation:riseIn .3s ease both">
+          <div style="display:flex;align-items:center;gap:10px">
+            <div style="width:30px;height:30px;border-radius:10px;background:#14161A;color:#fff;font-size:13px;font-weight:800;display:flex;align-items:center;justify-content:center">{{ l.no }}</div>
+            <div style="flex:1;display:flex;gap:6px">
+              <sc-for list="{{ l.members }}" as="m" hint-placeholder-count="3">
+                <div style="flex:1;background:#F7F6F3;border-radius:10px;padding:7px 8px">
+                  <div style="display:flex;align-items:center;gap:4px"><div style="width:5px;height:5px;border-radius:2px;background:{{ m.color }}"></div><div style="font-size:9px;font-weight:800;color:#8A8F98">T{{ m.tier }}</div></div>
+                  <div style="font-size:13px;font-weight:800;letter-spacing:-.02em;margin-top:2px">{{ m.name }}</div>
+                  <div style="font-size:10px;font-weight:700;color:#8A8F98;font-variant-numeric:tabular-nums">{{ m.avg }}</div>
+                </div>
+              </sc-for>
+            </div>
+            <div style="text-align:right"><div style="font-size:9px;font-weight:800;color:#8A8F98">AVG</div><div style="font-size:15px;font-weight:800;font-variant-numeric:tabular-nums">{{ l.avg }}</div></div>
+          </div>
+        </div>
+      </sc-for>
+    </div>
+  </div>
+  </sc-if>
+
+  <sc-if value="{{ isHistory }}" hint-placeholder-val="{{ false }}">
+  <div style="padding:8px 20px 0">
+    <div style="font-size:30px;font-weight:800;letter-spacing:-.02em">기록</div>
+    <div style="font-size:13px;color:#6B6F76;margin-top:6px;font-weight:500">최근 배정은 다음 추첨의 중복 방지에 반영돼요.</div>
+    <div style="display:flex;flex-direction:column;gap:12px;margin-top:18px">
+      <sc-for list="{{ history }}" as="h" hint-placeholder-count="3">
+        <div style="background:#fff;border-radius:16px;border:1px solid rgba(0,0,0,.06);padding:14px">
+          <div style="display:flex;align-items:baseline;justify-content:space-between">
+            <div style="font-size:14px;font-weight:800">{{ h.title }}</div>
+            <div style="font-size:11px;font-weight:700;color:#8A8F98">{{ h.meta }}</div>
+          </div>
+          <div style="display:flex;flex-wrap:wrap;gap:5px;margin-top:10px">
+            <sc-for list="{{ h.lanes }}" as="hl" hint-placeholder-count="8">
+              <div style="background:#F7F6F3;border-radius:8px;padding:6px 8px;font-size:11px;font-weight:700;color:#4A4F57"><span style="color:#B0B4BA">{{ hl.no }}</span> {{ hl.names }}</div>
+            </sc-for>
+          </div>
+        </div>
+      </sc-for>
+    </div>
+  </div>
+  </sc-if>
+
+</div>
+
+  <sc-if value="{{ rolling }}" hint-placeholder-val="{{ false }}">
+    <div style="position:absolute;inset:0;background:rgba(12,13,16,.74);display:flex;align-items:center;justify-content:center;padding:28px;z-index:85">
+      <div style="width:100%;background:#14161A;border-radius:26px;padding:26px 22px;color:#fff;text-align:center;animation:riseIn .22s ease both;box-shadow:0 20px 50px rgba(0,0,0,.4)">
+        <div style="width:56px;height:56px;margin:0 auto;border-radius:19px;background:{{ turnChipBg }};display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:800">{{ turnInitial }}</div>
+        <div style="font-size:11px;font-weight:800;letter-spacing:.1em;color:rgba(255,255,255,.5);margin-top:12px">{{ turnLabel }}</div>
+        <div style="font-size:28px;font-weight:800;letter-spacing:-.03em;margin-top:2px">{{ turnName }}</div>
+        <div style="margin-top:18px;border-radius:18px;background:rgba(255,255,255,.07);padding:20px 0">
+          <div style="font-size:10px;font-weight:800;letter-spacing:.16em;color:rgba(255,255,255,.45)">{{ rollCaption }}</div>
+          <div style="display:flex;align-items:baseline;justify-content:center;gap:5px;margin-top:4px;animation:{{ rollAnim }}">
+            <div style="font-size:64px;font-weight:800;letter-spacing:-.05em;line-height:1;font-variant-numeric:tabular-nums;color:{{ rollColor }}">{{ rollNo }}</div>
+            <div style="font-size:17px;font-weight:800;color:rgba(255,255,255,.6)">번 레인</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ shareOpen }}" hint-placeholder-val="{{ false }}">
+    <div onClick="{{ onShare }}" style="position:absolute;inset:0;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;padding:24px;z-index:80">
+      <div style="width:100%;background:#14161A;border-radius:22px;padding:20px;color:#fff;animation:riseIn .25s ease both">
+        <div style="display:flex;align-items:baseline;justify-content:space-between"><div style="font-size:16px;font-weight:800">GAME {{ game }} 레인 배정</div><div style="font-size:11px;font-weight:700;color:rgba(255,255,255,.45)">8/10 정기모임</div></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:14px">
+          <sc-for list="{{ lanes }}" as="l" hint-placeholder-count="8">
+            <div style="background:rgba(255,255,255,.07);border-radius:10px;padding:8px 9px">
+              <div style="font-size:10px;font-weight:800;color:#FF7A5C">LANE {{ l.no }}</div>
+              <div style="font-size:12px;font-weight:700;line-height:1.5;margin-top:3px">{{ l.namesLine }}</div>
+            </div>
+          </sc-for>
+        </div>
+        <div style="display:flex;gap:8px;margin-top:14px">
+          <div style="flex:1;text-align:center;padding:12px;border-radius:12px;background:#FF4A21;font-size:13px;font-weight:800">카카오톡 공유</div>
+          <div style="padding:12px 16px;border-radius:12px;background:rgba(255,255,255,.12);font-size:13px;font-weight:800">이미지 저장</div>
+        </div>
+      </div>
+    </div>
+  </sc-if>
+
+  <div style="flex:none;padding:10px 16px 30px;background:#F4F3F0;box-shadow:0 -10px 18px rgba(244,243,240,.95);z-index:70">
+    <sc-if value="{{ ctaVisible }}" hint-placeholder-val="{{ true }}">
+      <div style="display:flex;gap:8px;margin-bottom:10px">
+        <div onClick="{{ onCta }}" style="flex:1;height:52px;border-radius:16px;background:#FF4A21;color:#fff;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:800;cursor:pointer;box-shadow:0 6px 18px rgba(255,74,33,.32)">{{ ctaLabel }}</div>
+        <sc-if value="{{ resetVisible }}" hint-placeholder-val="{{ false }}">
+          <div onClick="{{ onReset }}" style="height:52px;padding:0 16px;border-radius:16px;background:#fff;border:1px solid rgba(0,0,0,.12);color:#6B6F76;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:800;cursor:pointer;flex:none" style-hover="border-color:#14161A;color:#14161A">전체 초기화</div>
+        </sc-if>
+      </div>
+    </sc-if>
+    <div style="display:flex;background:#fff;border:1px solid rgba(0,0,0,.06);border-radius:16px;padding:4px">
+      <sc-for list="{{ tabs }}" as="t" hint-placeholder-count="3">
+        <div onClick="{{ t.onTap }}" style="flex:1;text-align:center;padding:10px 0;border-radius:12px;font-size:12px;font-weight:800;cursor:pointer;background:{{ t.bg }};color:{{ t.fg }}">{{ t.label }}</div>
+      </sc-for>
+    </div>
+  </div>
+
+</div>
+</x-import>
+</div>
+
+<div class="dv-opt" id="1b"><div class="dv-olabel"><a class="dv-oid" href="#1b">1b</a>결과 대안 · 레인 스트립 (실제 레인처럼 가로 배치, 스크롤 없이 8레인)</div>
+<x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" hint-size="402px,874px">
+<div style="min-height:874px;background:#0F1115;padding:62px 20px 60px;box-sizing:border-box;color:#fff">
+  <div style="display:flex;align-items:flex-end;justify-content:space-between">
+    <div style="flex:1;min-width:0"><div style="font-size:11px;font-weight:800;letter-spacing:.1em;color:#6B7280;white-space:nowrap">GAME 2 · 24명</div><div style="font-size:28px;font-weight:800;letter-spacing:-.02em;margin-top:3px;white-space:nowrap">LANE BOARD</div></div>
+    <div style="padding:8px 12px;border-radius:999px;border:1px solid rgba(255,255,255,.18);font-size:11px;font-weight:800;color:rgba(255,255,255,.8)">재배정</div>
+  </div>
+  <div style="display:flex;flex-direction:column;gap:7px;margin-top:18px">
+    <sc-for list="{{ demoLanes }}" as="l" hint-placeholder-count="8">
+      <div style="display:flex;align-items:stretch;gap:0;border-radius:12px;overflow:hidden;background:rgba(255,255,255,.05)">
+        <div style="width:44px;display:flex;flex-direction:column;align-items:center;justify-content:center;background:rgba(255,255,255,.07)">
+          <div style="font-size:17px;font-weight:800;line-height:1">{{ l.no }}</div>
+          <div style="font-size:8px;font-weight:800;color:#6B7280;letter-spacing:.1em">LANE</div>
+        </div>
+        <div style="flex:1;display:flex">
+          <sc-for list="{{ l.members }}" as="m" hint-placeholder-count="3">
+            <div style="flex:1;padding:10px 8px;border-left:1px solid rgba(255,255,255,.07)">
+              <div style="font-size:8px;font-weight:800;color:{{ m.color }};letter-spacing:.08em">TIER {{ m.tier }}</div>
+              <div style="font-size:14px;font-weight:800;letter-spacing:-.02em;margin-top:3px">{{ m.name }}</div>
+            </div>
+          </sc-for>
+        </div>
+        <div style="width:52px;display:flex;flex-direction:column;align-items:center;justify-content:center;background:rgba(255,74,33,.14)">
+          <div style="font-size:8px;font-weight:800;color:#FF7A5C">AVG</div>
+          <div style="font-size:15px;font-weight:800;font-variant-numeric:tabular-nums">{{ l.avg }}</div>
+        </div>
+      </div>
+    </sc-for>
+  </div>
+  <div style="display:flex;justify-content:space-between;margin-top:16px;font-size:11px;font-weight:700;color:#6B7280">
+    <div>레인 평균 편차 ±4.2</div><div>중복 팀 0쌍 · 여성 8명 고르게</div>
+  </div>
+</div>
+</x-import>
+</div>
+
+</div>
+<p class="dv-next">다음 시도: “<a class="dv-oid" href="#1b">1b</a> 레이아웃으로 <a class="dv-oid" href="#1a">1a</a> 결과화면 교체” · “티어 인원 안 맞을 때 처리 화면 보여줘” · “티어 인원 안 맞을 때 처리 화면 더 보여줘”</p>
+</section>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1900,&quot;height&quot;:1050}}">
+const T = { 1: '#1F5FE0', 2: '#0E9D8B', 3: '#E0A200' };
+const R = [
+  ['김민준',1,'남',210],['이서준',1,'남',205],['박도윤',1,'남',198],['최예준',1,'남',203],
+  ['정시우',1,'남',212],['강하준',1,'여',196],['조지호',1,'남',201],['윤주원',1,'여',207],
+  ['장지후',1,'남',199],['임준서',1,'남',194],
+  ['한건우',2,'남',178],['오현우',2,'남',172],['서지안',2,'여',169],['신도현',2,'남',175],
+  ['권태영',2,'남',166],['황민서',2,'여',171],['안유진',2,'여',163],['송하윤',2,'여',174],
+  ['배수아',2,'여',168],['홍지우',2,'남',176],
+  ['문채원',3,'여',142],['유서연',3,'여',138],['남기훈',3,'남',145],['심우진',3,'남',133],
+  ['노아린',3,'여',140],['백승호',3,'남',136],['고은서',3,'여',148],['하지민',3,'여',131],
+  ['전다인',3,'여',144],['구현서',3,'남',139],
+].map(([name, tier, gender, avg]) => ({ name, tier, gender, avg }));
+
+const shuffle = (a) => { const b = a.slice(); for (let i = b.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [b[i], b[j]] = [b[j], b[i]]; } return b; };
+const key = (a, b) => [a, b].sort().join('|');
+
+class Component extends DCLogic {
+  constructor(p) {
+    super(p);
+    const absent = new Set(['임준서', '배수아', '구현서', '장지후', '홍지우', '전다인']);
+    const seed = [
+      { game: 1, lanes: [['정시우', '한건우', '문채원'], ['김민준', '안유진', '남기훈'], ['최예준', '신도현', '하지민'], ['이서준', '황민서', '고은서'], ['윤주원', '오현우', '백승호'], ['조지호', '송하윤', '유서연'], ['박도윤', '권태영', '심우진'], ['강하준', '서지안', '노아린']] },
+    ];
+    this.state = {
+      screen: 'roster', attend: Object.fromEntries(R.map(m => [m.name, !absent.has(m.name)])),
+      opts: { balance: true, gender: true, avoid: true },
+      lanes: [], queue: [], qi: 0, phase: 'idle', rollNo: 1, placed: [], game: 1, history: seed, share: false, slot: 0,
+    };
+    this.demo = this.build(R.filter(m => !absent.has(m.name)), { balance: true, gender: true, avoid: true }, seed);
+  }
+
+  attending() { return R.filter(m => this.state.attend[m.name]); }
+
+  build(list, opts, history) {
+    const byTier = [1, 2, 3].map(t => list.filter(m => m.tier === t));
+    const n = Math.max(...byTier.map(a => a.length));
+    const past = new Set();
+    history.forEach(h => h.lanes.forEach(l => l.forEach((a, i) => l.slice(i + 1).forEach(b => past.add(key(a, b))))));
+    let best = null;
+    for (let it = 0; it < (opts.balance || opts.avoid || opts.gender ? 300 : 1); it++) {
+      const cols = byTier.map(a => shuffle(a));
+      const lanes = [];
+      for (let i = 0; i < n; i++) lanes.push(cols.map(c => c[i]).filter(Boolean));
+      cols.forEach(c => c.slice(n).forEach(m => lanes[lanes.length - 1].push(m)));
+      let score = 0;
+      const avgs = lanes.map(l => l.reduce((s, m) => s + m.avg, 0) / l.length);
+      const mean = avgs.reduce((a, b) => a + b, 0) / avgs.length;
+      if (opts.balance) score += Math.sqrt(avgs.reduce((s, v) => s + (v - mean) ** 2, 0) / avgs.length) * 3;
+      if (opts.avoid) lanes.forEach(l => l.forEach((a, i) => l.slice(i + 1).forEach(b => { if (past.has(key(a.name, b.name))) score += 12; })));
+      if (opts.gender) {
+        const fTotal = list.filter(m => m.gender === '여').length;
+        lanes.forEach(l => { const f = l.filter(m => m.gender === '여').length; score += Math.abs(f - fTotal / lanes.length) * 2; });
+      }
+      if (!best || score < best.score) best = { score, lanes };
+    }
+    return best.lanes.map((mem, i) => ({
+      no: i + 1, members: mem,
+      avg: Math.round(mem.reduce((s, m) => s + m.avg, 0) / mem.length),
+    }));
+  }
+
+  assign() {
+    const lanes = this.build(this.attending(), this.state.opts, this.state.history);
+    const queue = [1, 2, 3].flatMap(t => shuffle(this.attending().filter(m => m.tier === t)).map(m => m.name));
+    this.setState({ lanes, queue, qi: 0, phase: 'idle', rollNo: 1, placed: [], screen: 'draw' });
+  }
+
+  componentWillUnmount() { clearInterval(this.spin); clearTimeout(this.t1); clearTimeout(this.t2); }
+
+  roll(name) {
+    const s = this.state;
+    if (s.phase !== 'idle' || !name || s.placed.includes(name)) return;
+    const target = s.lanes.findIndex(l => l.members.some(m => m.name === name)) + 1;
+    const n = s.lanes.length;
+    this.setState({ phase: 'rolling', active: name });
+    this.spin = setInterval(() => this.setState({ rollNo: 1 + Math.floor(Math.random() * n) }), 70);
+    this.t1 = setTimeout(() => {
+      clearInterval(this.spin);
+      this.setState(st => ({ phase: 'landed', rollNo: target, placed: [...st.placed, name] }));
+      this.t2 = setTimeout(() => this.setState({ phase: 'idle' }), 1100);
+    }, 1200);
+  }
+
+  fillRest() {
+    clearInterval(this.spin); clearTimeout(this.t1); clearTimeout(this.t2);
+    this.setState(st => ({ phase: 'idle', qi: st.queue.length, placed: st.queue.slice() }));
+  }
+
+  finish() {
+    const { lanes, game, history } = this.state;
+    this.setState({
+      screen: 'result',
+      history: [{ game, lanes: lanes.map(l => l.members.map(m => m.name)) }, ...history.filter(h => h.game !== game)],
+    });
+  }
+
+  laneVM(l, mapMember) {
+    return { no: l.no, avg: l.avg, members: l.members.map(mapMember), namesLine: l.members.map(m => m.name).join(' · ') };
+  }
+
+  renderVals() {
+    const s = this.state;
+    const mem = m => ({ name: m.name, tier: m.tier, avg: m.avg, color: T[m.tier], gender: m.gender });
+    const att = this.attending();
+    const laneCount = Math.max(...[1, 2, 3].map(t => att.filter(m => m.tier === t).length)) || 0;
+    const counts = [1, 2, 3].map(t => att.filter(m => m.tier === t).length);
+    const placed = new Set(s.placed);
+    const totalPeople = s.queue.length;
+    const revealedAll = totalPeople > 0 && s.placed.length >= totalPeople;
+    const current = s.phase === 'idle' ? null : R.find(m => m.name === s.active);
+    const waiting = s.queue.filter(n => !placed.has(n));
+    const landedLane = s.phase === 'landed' ? s.rollNo : 0;
+
+    const slotNames = [['정시우', '이서준', '박도윤'], ['한건우', '송하윤', '오현우'], ['문채원', '고은서', '남기훈']];
+
+    return {
+      isRoster: s.screen === 'roster', isDraw: s.screen === 'draw', isResult: s.screen === 'result', isHistory: s.screen === 'history',
+      attendCount: att.length, totalCount: R.length, laneCount, game: s.game,
+      tierSummary: counts.join(' / '), tierUneven: new Set(counts).size > 1,
+      shareOpen: s.share, onShare: () => this.setState({ share: !s.share }),
+
+      optChips: [
+        ['balance', '에버리지 균형'], ['gender', '성별 분배'], ['avoid', '중복 방지'],
+      ].map(([k, label]) => {
+        const on = s.opts[k];
+        return {
+          label, bg: on ? '#14161A' : '#fff', fg: on ? '#fff' : '#6B6F76', border: on ? '#14161A' : 'rgba(0,0,0,.12)',
+          onTap: () => this.setState({ opts: { ...s.opts, [k]: !on } }),
+        };
+      }),
+
+      tierGroups: [1, 2, 3].map(t => ({
+        label: t + '티어', color: T[t], count: att.filter(m => m.tier === t).length + ' / ' + R.filter(m => m.tier === t).length,
+        members: R.filter(m => m.tier === t).map(m => {
+          const on = s.attend[m.name];
+          return {
+            name: m.name, avg: m.avg, gender: m.gender, opacity: on ? 1 : 0.42,
+            check: on ? '✓' : '', boxBg: on ? T[t] : 'transparent', boxBorder: on ? T[t] : 'rgba(0,0,0,.2)',
+            onTap: () => this.setState({ attend: { ...s.attend, [m.name]: !on } }),
+          };
+        }),
+      })),
+
+      hasWaiting: waiting.length > 0,
+      waitingTiers: [1, 2, 3].map(t => {
+        const people = waiting.map(n => R.find(m => m.name === n)).filter(m => m.tier === t);
+        return {
+          tier: t, color: T[t], empty: people.length === 0,
+          people: people.map(m => ({
+            name: m.name, opacity: s.phase === 'idle' ? 1 : 0.4,
+            onTap: () => this.roll(m.name),
+          })),
+        };
+      }),
+      drawHint: revealedAll ? '배정 완료' : s.placed.length + ' / ' + totalPeople + '명',
+      turnName: revealedAll ? '모두 배정 완료' : (current ? current.name : '이름을 누르면 레인이 정해져요'),
+      turnInitial: revealedAll ? '✓' : (current ? current.name.slice(1, 2) : '?'),
+      turnAvg: current ? current.avg : '—',
+      turnLabel: s.phase === 'landed' ? (s.rollNo + '번 레인 배정!') : s.phase === 'rolling' ? '레인 뽑는 중' : revealedAll ? 'DONE' : '내 차례',
+      rolling: s.phase !== 'idle',
+      turnBg: s.phase === 'landed' ? '#14161A' : '#fff',
+      turnFg: s.phase === 'landed' ? '#fff' : '#14161A',
+      turnChipBg: revealedAll ? '#0E9D8B' : (current ? T[current.tier] : '#8A8F98'),
+      rollBg: s.phase === 'landed' ? 'rgba(255,255,255,.08)' : '#F4F3F0',
+      rollColor: s.phase === 'landed' ? '#FF7A5C' : '#fff',
+      rollNo: s.phase === 'idle' ? '–' : s.rollNo,
+      rollCaption: s.phase === 'landed' ? 'LANE ASSIGNED' : 'ROLLING…',
+      rollAnim: s.phase === 'landed' ? 'flipIn .5s cubic-bezier(.2,.7,.3,1) both' : 'none',
+
+      lanes: s.lanes.map((l) => {
+        const hot = l.no === landedLane;
+        return {
+          no: l.no, avg: l.avg,
+          members: l.members.map(mem),
+          namesLine: l.members.map(m => m.name).join(' · '),
+          cardBg: '#fff',
+          cardBorder: hot ? '#FF4A21' : 'rgba(0,0,0,.07)',
+          shadow: hot ? '0 8px 22px rgba(255,74,33,.28)' : '0 2px 10px rgba(0,0,0,.06)',
+          titleColor: '#14161A', metaColor: '#8A8F98',
+          metaText: l.members.every(m => placed.has(m.name)) ? 'AVG ' + l.avg : l.members.filter(m => placed.has(m.name)).length + '/' + l.members.length,
+          slots: l.members.map(m => {
+            const on = placed.has(m.name);
+            const justNow = on && m.name === s.placed[s.placed.length - 1] && s.phase === 'landed';
+            return {
+              tier: m.tier, label: on ? m.name : '· · ·', avgText: on ? m.avg : '',
+              anim: justNow ? 'flipIn .45s cubic-bezier(.2,.7,.3,1) both' : 'none',
+              rowBg: on ? (justNow ? '#FFF1EC' : '#F7F6F3') : '#F1F0EC',
+              chipBg: on ? T[m.tier] : 'rgba(0,0,0,.08)',
+              chipFg: on ? '#fff' : '#A8ADB4',
+              nameColor: on ? '#14161A' : '#C2C6CC',
+              canUndo: on && s.phase === 'idle',
+              onUndo: () => this.setState(st => ({ placed: st.placed.filter(n => n !== m.name) })),
+            };
+          }),
+        };
+      }),
+
+      resultBadges: [
+        { text: '평균 편차 ±' + (() => { const a = s.lanes.map(l => l.avg); if (!a.length) return '0'; const m = a.reduce((x, y) => x + y, 0) / a.length; return Math.sqrt(a.reduce((t, v) => t + (v - m) ** 2, 0) / a.length).toFixed(1); })() },
+        { text: s.opts.avoid ? '이전 회차 중복 회피' : '중복 허용' },
+        { text: s.opts.gender ? '성별 고르게 분배' : '성별 미고려' },
+      ],
+
+      history: s.history.map(h => ({
+        title: 'GAME ' + h.game, meta: h.lanes.length + '레인 · ' + h.lanes.flat().length + '명',
+        lanes: h.lanes.map((l, i) => ({ no: i + 1, names: l.join(' ') })),
+      })),
+
+      tabs: [['roster', '명단'], ['draw', '배정'], ['history', '기록']].map(([k, label]) => {
+        const on = s.screen === k || (k === 'draw' && s.screen === 'result');
+        return { label, bg: on ? '#F0EFEC' : 'transparent', fg: on ? '#14161A' : '#9AA0A8', onTap: () => this.setState({ screen: k === 'draw' && s.lanes.length === 0 ? 'roster' : k }) };
+      }),
+
+      ctaVisible: s.screen !== 'history',
+      resetVisible: (s.screen === 'draw' || s.screen === 'result') && s.phase === 'idle',
+      onReset: () => {
+        clearInterval(this.spin); clearTimeout(this.t1); clearTimeout(this.t2);
+        this.setState({ placed: [], phase: 'idle', rollNo: 1, active: null, screen: 'draw' });
+      },
+      ctaLabel: s.screen === 'roster' ? att.length + '명 · ' + laneCount + '레인 배정하기'
+        : s.screen === 'draw' ? (revealedAll ? '결과 보기' : s.phase !== 'idle' ? '뽑는 중…' : '남은 ' + waiting.length + '명 자동 배정')
+        : 'GAME ' + (s.game + 1) + ' 재배정',
+      onCta: () => {
+        if (s.screen === 'roster') return this.assign();
+        if (s.screen === 'draw') { if (revealedAll) return this.finish(); if (s.phase === 'idle') return this.fillRest(); return; }
+        this.setState({ game: s.game + 1 }, () => this.assign());
+      },
+
+      demoLanes: this.demo.map((l, i) => ({ ...this.laneVM(l, mem), zebra: i % 2 ? '#FBFAF7' : '#fff' })),
+      reasons: [
+        { text: '1티어 평균 203 → 레인별 편차 4.2로 수렴' },
+        { text: 'GAME 1과 겹치는 조합 0쌍' },
+        { text: '여성 참가자 8명을 8레인에 1명씩' },
+      ],
+
+      slotTitle: s.slot === 0 ? '3번 레인 추첨' : s.slot >= 3 ? '3번 레인 확정' : '돌아가는 중…',
+      slotHint: s.slot >= 3 ? '다음 레인으로 넘어갑니다' : '티어 순서대로 한 명씩 멈춥니다',
+      slotCta: s.slot >= 3 ? '다시 돌리기' : s.slot === 0 ? '레인 돌리기' : 'STOP',
+      slotRows: [1, 2, 3].map(t => {
+        const done = s.slot >= t;
+        return {
+          tier: t, color: T[t], border: done ? T[t] : 'rgba(255,255,255,.08)',
+          name: done ? slotNames[t - 1][0] : slotNames[t - 1][(s.slot + t) % 3],
+          opacity: done ? 1 : 0.35, blur: done ? '0px' : '6px',
+        };
+      }),
+      onSlot: () => this.setState({ slot: s.slot >= 3 ? 0 : s.slot + 1 }),
+    };
+  }
+}
+
+</script>
+</body>
+</html>
