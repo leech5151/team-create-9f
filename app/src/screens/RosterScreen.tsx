@@ -18,6 +18,8 @@ interface Props {
   editMode: boolean;
   onToggleEditMode: () => void;
   onToggleAttend: (id: string) => void;
+  /** Bulk attendance: check everyone, or clear the whole list. */
+  onSetAllAttend: (attending: boolean) => void;
   onToggleOption: (key: keyof Options) => void;
   onEditMember: (member: Member) => void;
   onDeleteMember: (member: Member) => void;
@@ -35,6 +37,7 @@ export function RosterScreen({
   editMode,
   onToggleEditMode,
   onToggleAttend,
+  onSetAllAttend,
   onToggleOption,
   onEditMember,
   onDeleteMember,
@@ -45,6 +48,7 @@ export function RosterScreen({
   const tierCounts = TIERS.map((t) => roster.filter((m) => m.tier === t && attend[m.id]).length);
   const uneven = new Set(tierCounts.filter((c) => c > 0)).size > 1;
   const empty = roster.length === 0;
+  const allAttending = attendCount === roster.length;
 
   if (empty) {
     return (
@@ -94,9 +98,18 @@ export function RosterScreen({
           </div>
         </div>
 
-        <button type="button" className="addMemberBtn" onClick={() => onAddMember(1)}>
-          <span className="addMemberBtn__plus">+</span> 멤버 추가
-        </button>
+        <div className="rosterTools">
+          <button type="button" className="addMemberBtn" onClick={() => onAddMember(1)}>
+            <span className="addMemberBtn__plus">+</span> 멤버 추가
+          </button>
+          <button
+            type="button"
+            className="rosterTools__toggle"
+            onClick={() => onSetAllAttend(!allAttending)}
+          >
+            {allAttending ? '전체 해제' : '전체 선택'}
+          </button>
+        </div>
 
         <div className="statRow">
           <div className="stat">
@@ -196,7 +209,7 @@ export function RosterScreen({
 
         {editMode && (
           <button type="button" className="resetData" onClick={onResetData}>
-            명단·기록 전체를 초기 상태로 되돌리기
+            명단 {roster.length}명 · 기록 전체 삭제
           </button>
         )}
       </div>

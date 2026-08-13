@@ -98,6 +98,12 @@ export default function App() {
   const toggleAttend = (id: string) =>
     setState((s) => ({ ...s, attend: { ...s.attend, [id]: !s.attend[id] } }));
 
+  const setAllAttend = (attending: boolean) =>
+    setState((s) => ({
+      ...s,
+      attend: Object.fromEntries(s.roster.map((m) => [m.id, attending])),
+    }));
+
   const toggleOption = (key: keyof Options) =>
     setState((s) => ({ ...s, opts: { ...s.opts, [key]: !s.opts[key] } }));
 
@@ -242,13 +248,25 @@ export default function App() {
     flash('예시 명단 30명을 불러왔어요');
   };
 
+  /** Wipes the roster, history and any draw in progress, back to first-run state. */
   const resetEverything = () => {
-    if (!window.confirm('명단·기록·설정을 모두 초기 상태로 되돌립니다. 계속할까요?')) return;
+    const warning =
+      `멤버 ${state.roster.length}명과 기록 ${state.history.length}건을 모두 삭제합니다.\n` +
+      '계속할까요?';
+    if (!window.confirm(warning)) return;
+    undoBuffer.current = state;
     roll.reset();
     clearState();
     setState(initialState());
     setEditMode(false);
-    flash('초기 상태로 되돌렸어요');
+    flash('명단과 기록을 모두 삭제했어요', {
+      label: '실행 취소',
+      run: () => {
+        const snapshot = undoBuffer.current;
+        if (snapshot) setState(snapshot);
+        undoBuffer.current = null;
+      },
+    });
   };
 
   // ── Share ──────────────────────────────────────────────────
@@ -332,6 +350,7 @@ export default function App() {
             editMode={editMode}
             onToggleEditMode={() => setEditMode((v) => !v)}
             onToggleAttend={toggleAttend}
+            onSetAllAttend={setAllAttend}
             onToggleOption={toggleOption}
             onEditMember={(member) => setEditor({ mode: 'edit', member })}
             onDeleteMember={deleteMember}

@@ -555,10 +555,34 @@ input {
   text-underline-offset: 3px;
 }
 
-.addMemberBtn {
-  width: 100%;
-  height: 46px;
+.rosterTools {
+  display: flex;
+  gap: 8px;
   margin-top: 14px;
+}
+
+.rosterTools__toggle {
+  flex: none;
+  padding: 0 14px;
+  height: 46px;
+  border-radius: 14px;
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  background: #fff;
+  font-size: 13px;
+  font-weight: 800;
+  color: #6b6f76;
+  white-space: nowrap;
+  transition: border-color 0.15s ease, color 0.15s ease;
+}
+
+.rosterTools__toggle:hover {
+  border-color: #14161a;
+  color: #14161a;
+}
+
+.addMemberBtn {
+  flex: 1;
+  height: 46px;
   border-radius: 14px;
   border: 1px solid rgba(0, 0, 0, 0.12);
   background: #fff;
