@@ -2,7 +2,15 @@ import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
 
+/**
+ * GitHub Pages project sites live under /<repo>/, so every emitted URL needs
+ * that prefix. The deploy workflow passes it in as BASE_PATH; local dev and
+ * any root-domain host keep the default '/'.
+ */
+const base = process.env.BASE_PATH ?? '/';
+
 export default defineConfig({
+  base,
   plugins: [
     react(),
     VitePWA({
@@ -16,18 +24,21 @@ export default defineConfig({
         description: '티어별로 균형 잡힌 볼링 레인을 랜덤 배정하는 앱',
         lang: 'ko',
         dir: 'ltr',
-        start_url: '/',
-        scope: '/',
+        // Relative to the manifest's own URL, so these stay correct whether the
+        // app is served from the domain root or from /<repo>/.
+        id: './',
+        start_url: '.',
+        scope: './',
         display: 'standalone',
         orientation: 'portrait',
         background_color: '#F4F3F0',
         theme_color: '#F4F3F0',
         categories: ['sports', 'utilities'],
         icons: [
-          { src: '/icon-192.png', sizes: '192x192', type: 'image/png' },
-          { src: '/icon-512.png', sizes: '512x512', type: 'image/png' },
+          { src: 'icon-192.png', sizes: '192x192', type: 'image/png' },
+          { src: 'icon-512.png', sizes: '512x512', type: 'image/png' },
           {
-            src: '/icon-maskable-512.png',
+            src: 'icon-maskable-512.png',
             sizes: '512x512',
             type: 'image/png',
             purpose: 'maskable',
@@ -36,7 +47,7 @@ export default defineConfig({
       },
       workbox: {
         globPatterns: ['**/*.{js,css,html,png,svg,webmanifest}'],
-        navigateFallback: '/index.html',
+        navigateFallback: `${base}index.html`,
         runtimeCaching: [
           {
             // Pretendard is CDN-hosted; cache it so the typeface survives offline.
