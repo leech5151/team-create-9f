@@ -208,9 +208,15 @@ export default function App() {
       ],
     }));
 
-  const resetDraw = () => {
-    roll.reset();
-    setState((s) => ({ ...s, placed: [], screen: 'draw' }));
+  /**
+   * Re-randomise the current game. Clearing `placed` alone would replay the
+   * *same* lanes, so this rebuilds the assignment and the draw order too.
+   */
+  const redraw = () => {
+    if (state.placed.length > 0 && !window.confirm('지금까지 뽑은 결과를 지우고 레인을 다시 배정할까요?')) {
+      return;
+    }
+    startAssignment(false);
   };
 
   const goTab = (key: 'roster' | 'draw' | 'history') => {
@@ -424,7 +430,7 @@ export default function App() {
           (state.screen === 'draw' || state.screen === 'result') && roll.phase === 'idle'
         }
         onCta={onCta}
-        onReset={resetDraw}
+        onReset={redraw}
         onTab={goTab}
       />
     </div>

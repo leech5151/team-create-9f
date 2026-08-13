@@ -36,7 +36,7 @@ export function BottomBar({
           </button>
           {resetVisible && (
             <button type="button" className="cta__reset" onClick={onReset}>
-              전체 초기화
+              다시 배정
             </button>
           )}
         </div>
