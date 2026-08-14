@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { BottomBar } from './components/BottomBar';
-import { InstallBanner } from './components/InstallBanner';
+import { InstallBanner, InstallPill } from './components/InstallBanner';
 import { AddMembersSheet, type MemberDraft } from './components/AddMembersSheet';
 import { MemberSheet, type MemberEdit } from './components/MemberSheet';
 import { RollOverlay } from './components/RollOverlay';
@@ -15,6 +15,8 @@ import { DrawScreen } from './screens/DrawScreen';
 import { ResultScreen } from './screens/ResultScreen';
 import { RosterScreen } from './screens/RosterScreen';
 import type { Lane, Member, Options, Ranked, ResultView, Screen, Tier } from './types';
+
+const APP_TITLE = '9프레임 정기전';
 
 const TOAST_MS = 1800;
 /** Longer, because the user has to notice the undo and reach for it. */
@@ -352,17 +354,29 @@ export default function App() {
     meta?.setAttribute('content', boardMode ? '#0F1115' : '#F4F3F0');
   }, [boardMode]);
 
-  const showInstallBanner =
-    state.screen === 'roster' && (installPrompt.canInstall || installPrompt.showIosHint);
+  // Only on 명단: it is the home screen, and the other screens are mid-task.
+  const showInstall = state.screen === 'roster' && installPrompt.installable;
 
   return (
     <div className="app" data-dark={boardMode}>
       <div className="app__scroll">
-        {showInstallBanner && (
+        <div className="appBar">
+          <div className="appBar__title">{APP_TITLE}</div>
+          {showInstall && installPrompt.collapsed && (
+            <InstallPill
+              onClick={() =>
+                // Chromium can go straight to the dialog; iOS needs the instructions.
+                installPrompt.canPrompt ? void installPrompt.install() : installPrompt.expand()
+              }
+            />
+          )}
+        </div>
+
+        {showInstall && !installPrompt.collapsed && (
           <InstallBanner
-            canInstall={installPrompt.canInstall}
+            canPrompt={installPrompt.canPrompt}
             onInstall={() => void installPrompt.install()}
-            onDismiss={installPrompt.dismiss}
+            onCollapse={installPrompt.collapse}
           />
         )}
 

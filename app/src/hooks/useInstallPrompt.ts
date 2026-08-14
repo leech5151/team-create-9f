@@ -6,11 +6,12 @@ interface BeforeInstallPromptEvent extends Event {
   userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }>;
 }
 
-const DISMISS_KEY = 'bowling-lane-draw/install-dismissed';
+/** Remembers the collapsed/expanded choice — never a permanent dismissal. */
+const COLLAPSED_KEY = 'bowling-lane-draw/install-collapsed';
 
-function readDismissed(): boolean {
+function readCollapsed(): boolean {
   try {
-    return localStorage.getItem(DISMISS_KEY) === '1';
+    return localStorage.getItem(COLLAPSED_KEY) === '1';
   } catch {
     return false;
   }
@@ -23,7 +24,7 @@ function isStandalone(): boolean {
   return (window.navigator as Navigator & { standalone?: boolean }).standalone === true;
 }
 
-function isIos(): boolean {
+function isIosDevice(): boolean {
   if (typeof navigator === 'undefined') return false;
   if (/iphone|ipad|ipod/i.test(navigator.userAgent)) return true;
   // iPadOS reports as Mac; touch points give it away.
@@ -31,7 +32,11 @@ function isIos(): boolean {
 }
 
 /**
- * Drives the "홈 화면에 추가" banner.
+ * Drives the install affordance.
+ *
+ * Collapsing shrinks the banner to a pill rather than hiding it: the entry
+ * point stays available for as long as the app is installable, so it can be
+ * installed on another device or after being removed.
  *
  * Chromium hands us a deferred prompt we can fire on a user gesture. iOS Safari
  * has no such API — installing is a manual Share-sheet step, so there we can
@@ -40,7 +45,7 @@ function isIos(): boolean {
 export function useInstallPrompt() {
   const [deferred, setDeferred] = useState<BeforeInstallPromptEvent | null>(null);
   const [installed, setInstalled] = useState(isStandalone);
-  const [dismissed, setDismissed] = useState(readDismissed);
+  const [collapsed, setCollapsed] = useState(readCollapsed);
 
   useEffect(() => {
     const onBeforeInstall = (e: Event) => {
@@ -65,14 +70,17 @@ export function useInstallPrompt() {
     };
   }, []);
 
-  const dismiss = useCallback(() => {
-    setDismissed(true);
+  const persistCollapsed = (value: boolean) => {
+    setCollapsed(value);
     try {
-      localStorage.setItem(DISMISS_KEY, '1');
+      localStorage.setItem(COLLAPSED_KEY, value ? '1' : '0');
     } catch {
-      // Non-persistent dismissal is still better than nothing.
+      // Non-persistent state is still better than nothing.
     }
-  }, []);
+  };
+
+  const collapse = useCallback(() => persistCollapsed(true), []);
+  const expand = useCallback(() => persistCollapsed(false), []);
 
   /** Resolves to true when the user accepted the browser's install dialog. */
   const install = useCallback(async (): Promise<boolean> => {
@@ -81,23 +89,27 @@ export function useInstallPrompt() {
       await deferred.prompt();
       const { outcome } = await deferred.userChoice;
       setDeferred(null);
-      if (outcome === 'accepted') return true;
-      dismiss();
-      return false;
+      // Declining collapses rather than hides — they may want it later.
+      if (outcome !== 'accepted') persistCollapsed(true);
+      return outcome === 'accepted';
     } catch {
       return false;
     }
-  }, [deferred, dismiss]);
+  }, [deferred]);
 
-  const ios = isIos();
+  const ios = isIosDevice();
 
   return {
-    /** Chromium: we can open the install dialog directly. */
-    canInstall: !installed && !dismissed && deferred !== null,
-    /** iOS: show Share-sheet instructions instead. */
-    showIosHint: !installed && !dismissed && ios && deferred === null,
+    /** Chromium can open the native install dialog right now. */
+    canPrompt: deferred !== null,
+    /** iOS needs Share-sheet instructions instead of a dialog. */
+    isIos: ios,
+    /** Whether any install path exists on this browser. */
+    installable: !installed && (deferred !== null || ios),
     installed,
+    collapsed,
+    collapse,
+    expand,
     install,
-    dismiss,
   };
 }
