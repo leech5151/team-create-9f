@@ -1,4 +1,12 @@
-import type { HistoryEntry, Member, Options, ResultView, Screen, Section } from '../types';
+import type {
+  HistoryEntry,
+  LeagueTab,
+  Member,
+  Options,
+  ResultView,
+  Screen,
+  Section,
+} from '../types';
 
 const KEY = 'bowling-lane-draw/v1';
 
@@ -12,6 +20,8 @@ export interface PersistedState {
   /** Which top-level area is open. */
   section: Section;
   screen: Screen;
+  /** Active tab inside 상주리그. */
+  leagueTab: LeagueTab;
   /** Current draw's lanes as member ids, so roster edits reconcile on load. */
   laneIds: string[][];
   queue: string[];
@@ -29,6 +39,7 @@ export function initialState(): PersistedState {
     game: 1,
     section: 'home',
     screen: 'roster',
+    leagueTab: 'main',
     laneIds: [],
     queue: [],
     placed: [],
@@ -48,6 +59,9 @@ function parseMember(raw: unknown): Member | null {
   if (typeof m.avg !== 'number' || !Number.isFinite(m.avg)) return null;
   return { id: m.id, name: m.name, gender: m.gender, avg: m.avg };
 }
+
+const isLeagueTab = (v: unknown): v is LeagueTab =>
+  v === 'main' || v === 'play' || v === 'schedule' || v === 'players';
 
 const asIdList = (raw: unknown, known: ReadonlySet<string>): string[] =>
   Array.isArray(raw) ? raw.filter((v): v is string => typeof v === 'string' && known.has(v)) : [];
@@ -119,7 +133,8 @@ export function loadState(): PersistedState {
     opts,
     history,
     game: typeof s.game === 'number' && s.game >= 1 ? Math.floor(s.game) : 1,
-    section: s.section === 'teams' ? 'teams' : 'home',
+    section: s.section === 'teams' || s.section === 'league' ? s.section : 'home',
+    leagueTab: isLeagueTab(s.leagueTab) ? s.leagueTab : 'main',
     // A draw screen with no lanes has nothing to show — send it back to 명단.
     screen: laneIds.length === 0 && (screen === 'draw' || screen === 'result') ? 'roster' : screen,
     laneIds,

@@ -12,15 +12,29 @@ import { shareText } from './lib/format';
 import { clearState, initialState, loadState, saveState, type PersistedState } from './lib/storage';
 import { HistoryScreen } from './screens/HistoryScreen';
 import { HomeScreen } from './screens/HomeScreen';
+import { LeagueScreen } from './screens/LeagueScreen';
+import { TabBar } from './components/TabBar';
 import { DrawScreen } from './screens/DrawScreen';
 import { ResultScreen } from './screens/ResultScreen';
 import { RosterScreen } from './screens/RosterScreen';
-import type { Lane, Member, Options, Ranked, ResultView, Screen, Section, Tier } from './types';
+import type {
+  Lane,
+  LeagueTab,
+  Member,
+  Options,
+  Ranked,
+  ResultView,
+  Screen,
+  Section,
+  Tier,
+} from './types';
+import { LEAGUE_TABS } from './types';
 
 const APP_TITLE = '9프레임 전용 앱';
 
 const SECTION_TITLES: Record<Exclude<Section, 'home'>, string> = {
   teams: '팀짜기',
+  league: '상주리그',
 };
 
 const TOAST_MS = 1800;
@@ -268,6 +282,8 @@ export default function App() {
     setState((s) => ({ ...s, section: 'home' }));
   };
 
+  const goLeagueTab = (leagueTab: LeagueTab) => setState((s) => ({ ...s, leagueTab }));
+
   const goTab = (key: 'roster' | 'draw' | 'history') => {
     const target: Screen = key === 'draw' && lanes.length === 0 ? 'roster' : key;
     setState((s) => ({ ...s, screen: target }));
@@ -362,6 +378,7 @@ export default function App() {
   };
 
   const teams = state.section === 'teams';
+  const league = state.section === 'league';
   const boardMode = teams && state.screen === 'result' && state.resultView === 'board';
 
   // Keep the standalone status-bar tint in step with the surface behind it.
@@ -466,6 +483,8 @@ export default function App() {
         {teams && state.screen === 'history' && (
           <HistoryScreen history={state.history} byId={byId} />
         )}
+
+        {league && <LeagueScreen tab={state.leagueTab} />}
       </div>
 
       {roll.phase !== 'idle' && (
@@ -514,6 +533,16 @@ export default function App() {
               {toast.action.label}
             </button>
           )}
+        </div>
+      )}
+
+      {league && (
+        <div className="app__bottom">
+          <TabBar
+            tabs={LEAGUE_TABS}
+            isActive={(key) => state.leagueTab === key}
+            onSelect={goLeagueTab}
+          />
         </div>
       )}
 

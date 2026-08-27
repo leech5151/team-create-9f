@@ -1,9 +1,12 @@
+import { TabBar, type TabItem } from './TabBar';
 import type { Screen } from '../types';
 
-const TABS: [key: 'roster' | 'draw' | 'history', label: string][] = [
-  ['roster', '명단'],
-  ['draw', '배정'],
-  ['history', '기록'],
+type TeamTab = 'roster' | 'draw' | 'history';
+
+const TABS: readonly TabItem<TeamTab>[] = [
+  { key: 'roster', label: '명단' },
+  { key: 'draw', label: '배정' },
+  { key: 'history', label: '기록' },
 ];
 
 interface Props {
@@ -14,7 +17,7 @@ interface Props {
   resetVisible: boolean;
   onCta: () => void;
   onReset: () => void;
-  onTab: (key: 'roster' | 'draw' | 'history') => void;
+  onTab: (key: TeamTab) => void;
 }
 
 export function BottomBar({
@@ -41,24 +44,12 @@ export function BottomBar({
           )}
         </div>
       )}
-      <div className="tabs" role="tablist">
-        {TABS.map(([key, label]) => {
-          // 결과 화면은 배정 탭의 연장선이므로 배정 탭이 켜진 상태로 둔다.
-          const on = screen === key || (key === 'draw' && screen === 'result');
-          return (
-            <button
-              type="button"
-              key={key}
-              role="tab"
-              aria-selected={on}
-              className={`tab${on ? ' tab--on' : ''}`}
-              onClick={() => onTab(key)}
-            >
-              {label}
-            </button>
-          );
-        })}
-      </div>
+      <TabBar
+        tabs={TABS}
+        // 결과 화면은 배정 탭의 연장선이므로 배정 탭이 켜진 상태로 둔다.
+        isActive={(key) => screen === key || (key === 'draw' && screen === 'result')}
+        onSelect={onTab}
+      />
     </div>
   );
 }

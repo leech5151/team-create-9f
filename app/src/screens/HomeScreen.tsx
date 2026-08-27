@@ -11,6 +11,12 @@ interface Feature {
 
 const FEATURES: Feature[] = [
   {
+    section: 'league',
+    title: '상주리그',
+    desc: '순위 · 경기 진행 · 일정 · 선수 명단',
+    bars: ['#C93A16', '#FF4A21', '#FF9B7F'],
+  },
+  {
     section: 'teams',
     title: '팀짜기',
     desc: '점수 순위로 티어를 나눠 레인을 균형 있게 배정',

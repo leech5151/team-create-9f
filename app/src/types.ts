@@ -47,9 +47,19 @@ export interface HistoryEntry {
  * with its own internal navigation. Add a member here when a feature becomes
  * routable — the hub lists planned ones separately.
  */
-export type Section = 'home' | 'teams';
+export type Section = 'home' | 'teams' | 'league';
 
 /** Screens *within* the 팀짜기 feature. */
 export type Screen = 'roster' | 'draw' | 'result' | 'history';
+
+/** Tabs *within* the 상주리그 feature. */
+export type LeagueTab = 'main' | 'play' | 'schedule' | 'players';
+
+export const LEAGUE_TABS: readonly { key: LeagueTab; label: string }[] = [
+  { key: 'main', label: '메인' },
+  { key: 'play', label: '경기진행' },
+  { key: 'schedule', label: '경기일정' },
+  { key: 'players', label: '선수명단' },
+];
 export type Phase = 'idle' | 'rolling' | 'landed';
 export type ResultView = 'cards' | 'board';
