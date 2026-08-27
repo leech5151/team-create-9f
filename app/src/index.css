@@ -71,6 +71,19 @@ input {
   }
 }
 
+/* Separate from riseIn: the toast is centred with its own translate, which a
+   translateY-based animation would override. */
+@keyframes toastIn {
+  from {
+    transform: translate(-50%, -50%) scale(0.94);
+    opacity: 0;
+  }
+  to {
+    transform: translate(-50%, -50%) scale(1);
+    opacity: 1;
+  }
+}
+
 @keyframes slideUp {
   from {
     transform: translateY(100%);
@@ -90,6 +103,11 @@ input {
   --surface-2: #f7f6f3;
   --border: rgba(0, 0, 0, 0.06);
   --tab-on: #f0efec;
+
+  /* Horizontal rhythm — widened at the breakpoints below so a tablet gets
+     breathing room instead of a phone-width column floating in the middle. */
+  --gutter: 20px;
+  --bar-gutter: 16px;
 
   position: relative;
   width: 100%;
@@ -125,6 +143,77 @@ input {
   }
 }
 
+/* ── Tablet ────────────────────────────────────────────────────
+   Widen the column and fit more lanes per row rather than scaling the
+   phone layout up, which would just enlarge the type. */
+@media (min-width: 700px) {
+  .app {
+    --gutter: 28px;
+    --bar-gutter: 24px;
+    max-width: 640px;
+  }
+
+  .laneGrid,
+  .shareGrid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  .title,
+  .rosterHead__title,
+  .resultHead__title,
+  .drawPrompt__title {
+    font-size: 34px;
+  }
+
+  .appBar__title,
+  .appBar__back {
+    font-size: 17px;
+  }
+
+  .cta__main {
+    height: 56px;
+    font-size: 17px;
+  }
+
+  .cta__reset {
+    height: 56px;
+  }
+
+  .tab {
+    padding: 12px 0;
+    font-size: 13px;
+  }
+
+  .feature {
+    padding: 20px 18px;
+  }
+}
+
+/* ── Large tablet / desktop ───────────────────────────────────── */
+@media (min-width: 1000px) {
+  .app {
+    --gutter: 32px;
+    max-width: 780px;
+  }
+
+  .laneGrid,
+  .shareGrid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+
+  /* Two columns of tier groups — the roster is the longest screen by far. */
+  .tierGroups {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0 18px;
+    align-items: start;
+  }
+
+  .tierGroups > .resetData {
+    grid-column: 1 / -1;
+  }
+}
+
 .app__scroll {
   flex: 1;
   /* min-height:0 lets this flex child shrink below its content height, which is
@@ -139,12 +228,12 @@ input {
 }
 
 .screen {
-  padding: 8px 20px 0;
+  padding: 8px var(--gutter) 0;
 }
 
 .app__bottom {
   flex: none;
-  padding: 10px 16px calc(env(safe-area-inset-bottom, 0px) + 20px);
+  padding: 10px var(--bar-gutter) calc(env(safe-area-inset-bottom, 0px) + 20px);
   background: var(--bg);
   box-shadow: 0 -10px 18px var(--bg);
   z-index: 70;
@@ -180,7 +269,7 @@ input {
   display: flex;
   align-items: center;
   gap: 11px;
-  margin: 0 20px 14px;
+  margin: 0 var(--gutter) 14px;
   padding: 12px 13px;
   border-radius: 16px;
   background: #14161a;
@@ -242,7 +331,7 @@ input {
   justify-content: space-between;
   gap: 10px;
   min-height: 30px;
-  padding: 0 20px;
+  padding: 0 var(--gutter);
   margin-bottom: 12px;
 }
 
@@ -254,6 +343,148 @@ input {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.appBar__back {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 15px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--fg);
+  min-width: 0;
+}
+
+.appBar__chevron {
+  font-size: 21px;
+  line-height: 1;
+  margin-top: -2px;
+  color: var(--muted);
+}
+
+.appBar__back:hover .appBar__chevron {
+  color: #ff4a21;
+}
+
+/* ── Hub — feature list ────────────────────────────────────── */
+
+.features {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 20px;
+}
+
+.feature {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  width: 100%;
+  padding: 16px 14px;
+  border-radius: 18px;
+  background: #fff;
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+  text-align: left;
+  transition: border-color 0.15s ease, transform 0.1s ease;
+  animation: riseIn 0.3s ease both;
+}
+
+.feature:not(:disabled):hover {
+  border-color: #ff4a21;
+}
+
+.feature:not(:disabled):active {
+  transform: scale(0.99);
+}
+
+.feature--soon {
+  background: transparent;
+  border-style: dashed;
+  border-color: rgba(0, 0, 0, 0.14);
+  box-shadow: none;
+  cursor: default;
+}
+
+.feature__icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 14px;
+  background: #14161a;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  flex: none;
+}
+
+.feature--soon .feature__icon {
+  background: rgba(0, 0, 0, 0.08);
+}
+
+.feature__bar {
+  width: 5px;
+  height: 19px;
+  border-radius: 3px;
+}
+
+.feature--soon .feature__bar {
+  opacity: 0.45;
+}
+
+.feature__body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.feature__titleRow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.feature__title {
+  font-size: 16px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+.feature--soon .feature__title {
+  color: #9aa0a8;
+}
+
+.feature__badge {
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.07);
+  font-size: 10px;
+  font-weight: 800;
+  color: #8a8f98;
+}
+
+.feature__desc {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: #8a8f98;
+  line-height: 1.45;
+}
+
+.feature__meta {
+  font-size: 11.5px;
+  font-weight: 800;
+  color: #ff4a21;
+  margin-top: 2px;
+}
+
+.feature__chevron {
+  flex: none;
+  font-size: 22px;
+  line-height: 1;
+  color: #c2c6cc;
 }
 
 /* Collapsed install form — always reachable while installable. */
@@ -422,7 +653,7 @@ input {
 }
 
 .tierGroups {
-  padding: 18px 20px 0;
+  padding: 18px var(--gutter) 0;
 }
 
 .tierGroup {
@@ -1852,24 +2083,27 @@ input {
 
 /* ── Toast ─────────────────────────────────────────────────── */
 
+/* Centred in the viewport: the hub has no bottom bar to anchor to, and an
+   actionable undo needs to be where the eye already is. */
 .toast {
   position: absolute;
   left: 50%;
-  transform: translateX(-50%);
-  bottom: calc(env(safe-area-inset-bottom, 0px) + 110px);
-  padding: 10px 16px;
-  border-radius: 999px;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  padding: 13px 18px;
+  border-radius: 16px;
   background: rgba(20, 22, 26, 0.94);
   color: #fff;
-  font-size: 12.5px;
+  font-size: 13.5px;
   font-weight: 700;
   z-index: 95;
-  animation: riseIn 0.2s ease both;
-  white-space: nowrap;
+  animation: toastIn 0.22s cubic-bezier(0.2, 0.7, 0.3, 1) both;
   display: flex;
   align-items: center;
-  gap: 12px;
-  max-width: calc(100% - 32px);
+  gap: 14px;
+  max-width: calc(100% - 2 * var(--gutter));
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.28);
+  text-align: center;
 }
 
 .toast__action {

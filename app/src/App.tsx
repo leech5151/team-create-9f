@@ -11,12 +11,17 @@ import { buildLanes, buildQueue, hydrateLanes, laneCountFor, tierMap } from './l
 import { shareText } from './lib/format';
 import { clearState, initialState, loadState, saveState, type PersistedState } from './lib/storage';
 import { HistoryScreen } from './screens/HistoryScreen';
+import { HomeScreen } from './screens/HomeScreen';
 import { DrawScreen } from './screens/DrawScreen';
 import { ResultScreen } from './screens/ResultScreen';
 import { RosterScreen } from './screens/RosterScreen';
-import type { Lane, Member, Options, Ranked, ResultView, Screen, Tier } from './types';
+import type { Lane, Member, Options, Ranked, ResultView, Screen, Section, Tier } from './types';
 
-const APP_TITLE = '9프레임 정기전';
+const APP_TITLE = '9프레임 전용 앱';
+
+const SECTION_TITLES: Record<Exclude<Section, 'home'>, string> = {
+  teams: '팀짜기',
+};
 
 const TOAST_MS = 1800;
 /** Longer, because the user has to notice the undo and reach for it. */
@@ -253,6 +258,16 @@ export default function App() {
     startAssignment(false);
   };
 
+  // ── Section navigation ─────────────────────────────────────
+  const openSection = (section: Exclude<Section, 'home'>) =>
+    setState((s) => ({ ...s, section }));
+
+  /** Back out to the hub. Any draw in progress is kept, not discarded. */
+  const goHome = () => {
+    roll.reset();
+    setState((s) => ({ ...s, section: 'home' }));
+  };
+
   const goTab = (key: 'roster' | 'draw' | 'history') => {
     const target: Screen = key === 'draw' && lanes.length === 0 ? 'roster' : key;
     setState((s) => ({ ...s, screen: target }));
@@ -346,7 +361,8 @@ export default function App() {
     startAssignment(true);
   };
 
-  const boardMode = state.screen === 'result' && state.resultView === 'board';
+  const teams = state.section === 'teams';
+  const boardMode = teams && state.screen === 'result' && state.resultView === 'board';
 
   // Keep the standalone status-bar tint in step with the surface behind it.
   useEffect(() => {
@@ -355,13 +371,22 @@ export default function App() {
   }, [boardMode]);
 
   // Only on 명단: it is the home screen, and the other screens are mid-task.
-  const showInstall = state.screen === 'roster' && installPrompt.installable;
+  const showInstall = state.section === 'home' && installPrompt.installable;
 
   return (
     <div className="app" data-dark={boardMode}>
       <div className="app__scroll">
         <div className="appBar">
-          <div className="appBar__title">{APP_TITLE}</div>
+          {state.section === 'home' ? (
+            <div className="appBar__title">{APP_TITLE}</div>
+          ) : (
+            <button type="button" className="appBar__back" onClick={goHome}>
+              <span className="appBar__chevron" aria-hidden="true">
+                ‹
+              </span>
+              {SECTION_TITLES[state.section]}
+            </button>
+          )}
           {showInstall && installPrompt.collapsed && (
             <InstallPill
               onClick={() =>
@@ -380,7 +405,16 @@ export default function App() {
           />
         )}
 
-        {state.screen === 'roster' && (
+        {state.section === 'home' && (
+          <HomeScreen
+            memberCount={state.roster.length}
+            attendCount={attending.length}
+            game={state.game}
+            onOpen={openSection}
+          />
+        )}
+
+        {teams && state.screen === 'roster' && (
           <RosterScreen
             roster={state.roster}
             attend={state.attend}
@@ -401,7 +435,7 @@ export default function App() {
           />
         )}
 
-        {state.screen === 'draw' && (
+        {teams && state.screen === 'draw' && (
           <DrawScreen
             game={state.game}
             lanes={lanes}
@@ -417,7 +451,7 @@ export default function App() {
           />
         )}
 
-        {state.screen === 'result' && (
+        {teams && state.screen === 'result' && (
           <ResultScreen
             game={state.game}
             lanes={lanes}
@@ -429,7 +463,9 @@ export default function App() {
           />
         )}
 
-        {state.screen === 'history' && <HistoryScreen history={state.history} byId={byId} />}
+        {teams && state.screen === 'history' && (
+          <HistoryScreen history={state.history} byId={byId} />
+        )}
       </div>
 
       {roll.phase !== 'idle' && (
@@ -481,21 +517,24 @@ export default function App() {
         </div>
       )}
 
-      <BottomBar
-        screen={state.screen}
-        ctaVisible={state.screen !== 'history'}
-        ctaLabel={ctaLabel}
-        ctaDisabled={
-          (state.screen === 'roster' && (state.roster.length === 0 || attending.length === 0)) ||
-          (state.screen === 'draw' && roll.phase !== 'idle')
-        }
-        resetVisible={
-          (state.screen === 'draw' || state.screen === 'result') && roll.phase === 'idle'
-        }
-        onCta={onCta}
-        onReset={redraw}
-        onTab={goTab}
-      />
+      {/* The hub has no CTA or tabs — those belong to the feature you are inside. */}
+      {teams && (
+        <BottomBar
+          screen={state.screen}
+          ctaVisible={state.screen !== 'history'}
+          ctaLabel={ctaLabel}
+          ctaDisabled={
+            (state.screen === 'roster' && (state.roster.length === 0 || attending.length === 0)) ||
+            (state.screen === 'draw' && roll.phase !== 'idle')
+          }
+          resetVisible={
+            (state.screen === 'draw' || state.screen === 'result') && roll.phase === 'idle'
+          }
+          onCta={onCta}
+          onReset={redraw}
+          onTab={goTab}
+        />
+      )}
     </div>
   );
 }

@@ -42,6 +42,14 @@ export interface HistoryEntry {
   lanes: string[][];
 }
 
+/**
+ * Top-level area of the app. `home` is the hub; each other value is a feature
+ * with its own internal navigation. Add a member here when a feature becomes
+ * routable — the hub lists planned ones separately.
+ */
+export type Section = 'home' | 'teams';
+
+/** Screens *within* the 팀짜기 feature. */
 export type Screen = 'roster' | 'draw' | 'result' | 'history';
 export type Phase = 'idle' | 'rolling' | 'landed';
 export type ResultView = 'cards' | 'board';

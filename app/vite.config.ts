@@ -19,7 +19,7 @@ export default defineConfig({
       devOptions: { enabled: true, type: 'module' },
       includeAssets: ['apple-touch-icon.png', 'favicon-32.png'],
       manifest: {
-        name: '9프레임 정기전',
+        name: '9프레임 전용 앱',
         short_name: '9프레임',
         description: '티어별로 균형 잡힌 볼링 레인을 랜덤 배정하는 앱',
         lang: 'ko',

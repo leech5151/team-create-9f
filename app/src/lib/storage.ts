@@ -1,4 +1,4 @@
-import type { HistoryEntry, Member, Options, ResultView, Screen } from '../types';
+import type { HistoryEntry, Member, Options, ResultView, Screen, Section } from '../types';
 
 const KEY = 'bowling-lane-draw/v1';
 
@@ -9,6 +9,8 @@ export interface PersistedState {
   opts: Options;
   history: HistoryEntry[];
   game: number;
+  /** Which top-level area is open. */
+  section: Section;
   screen: Screen;
   /** Current draw's lanes as member ids, so roster edits reconcile on load. */
   laneIds: string[][];
@@ -25,6 +27,7 @@ export function initialState(): PersistedState {
     opts: { balance: true, gender: true, avoid: true },
     history: [],
     game: 1,
+    section: 'home',
     screen: 'roster',
     laneIds: [],
     queue: [],
@@ -116,6 +119,7 @@ export function loadState(): PersistedState {
     opts,
     history,
     game: typeof s.game === 'number' && s.game >= 1 ? Math.floor(s.game) : 1,
+    section: s.section === 'teams' ? 'teams' : 'home',
     // A draw screen with no lanes has nothing to show — send it back to 명단.
     screen: laneIds.length === 0 && (screen === 'draw' || screen === 'result') ? 'roster' : screen,
     laneIds,
