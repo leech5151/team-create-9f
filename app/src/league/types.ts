@@ -6,6 +6,12 @@ export interface LeaguePlayer {
   id: string;
   name: string;
   gender: '남' | '여' | null;
+  /** Handicap added to every game this player bowls. */
+  handicap: number;
+  /** Penalty (deduction applied to stronger bowlers). */
+  penalty: number;
+  /** Average score; null when not recorded yet. */
+  avg: number | null;
 }
 
 export interface LeagueTeam {
@@ -14,13 +20,18 @@ export interface LeagueTeam {
 }
 
 /**
- * One player's appearance in a match. Handicap is captured per match because
- * the operator re-enters it each week; storing it here keeps past results from
- * shifting when the number changes.
+ * One player's appearance in a match, paired with the handicap that applies.
+ *
+ * The handicap is read from the player's registration — it is not stored per
+ * match. Editing a player's handicap therefore changes how their past games
+ * score, which is what the operator expects from a single source of truth.
  */
 export interface Appearance {
   playerId: string;
+  /** Added to every game. Magnitude only — never negative. */
   handicap: number;
+  /** Subtracted from every game. Magnitude only — never negative. */
+  penalty: number;
 }
 
 export interface GameScore {

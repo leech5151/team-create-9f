@@ -6,6 +6,8 @@ import { MemberSheet, type MemberEdit } from './components/MemberSheet';
 import { RollOverlay } from './components/RollOverlay';
 import { ShareSheet } from './components/ShareSheet';
 import { useInstallPrompt } from './hooks/useInstallPrompt';
+import { useAdminAuth } from './league/useAdminAuth';
+import { LoginSheet } from './components/LoginSheet';
 import { useRoll } from './hooks/useRoll';
 import { buildLanes, buildQueue, hydrateLanes, laneCountFor, tierMap } from './lib/assign';
 import { shareText } from './lib/format';
@@ -57,6 +59,8 @@ export default function App() {
   /** Pre-delete snapshot, restored by the toast's 실행 취소. */
   const undoBuffer = useRef<PersistedState | null>(null);
   const installPrompt = useInstallPrompt();
+  const auth = useAdminAuth();
+  const [loginOpen, setLoginOpen] = useState(false);
 
   useEffect(() => saveState(state), [state]);
 
@@ -404,14 +408,35 @@ export default function App() {
               {SECTION_TITLES[state.section]}
             </button>
           )}
-          {showInstall && installPrompt.collapsed && (
-            <InstallPill
-              onClick={() =>
-                // Chromium can go straight to the dialog; iOS needs the instructions.
-                installPrompt.canPrompt ? void installPrompt.install() : installPrompt.expand()
-              }
-            />
-          )}
+          <div className="appBar__right">
+            {showInstall && installPrompt.collapsed && (
+              <InstallPill
+                onClick={() =>
+                  // Chromium can go straight to the dialog; iOS needs the instructions.
+                  installPrompt.canPrompt ? void installPrompt.install() : installPrompt.expand()
+                }
+              />
+            )}
+            {auth.ready &&
+              (auth.isAdmin ? (
+                <button
+                  type="button"
+                  className="authPill authPill--on"
+                  title={auth.email ?? undefined}
+                  onClick={() => void auth.signOut().then(() => flash('로그아웃했어요'))}
+                >
+                  운영자
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  className="authPill"
+                  onClick={() => setLoginOpen(true)}
+                >
+                  로그인
+                </button>
+              ))}
+          </div>
         </div>
 
         {showInstall && !installPrompt.collapsed && (
@@ -484,7 +509,9 @@ export default function App() {
           <HistoryScreen history={state.history} byId={byId} />
         )}
 
-        {league && <LeagueScreen tab={state.leagueTab} />}
+        {league && (
+          <LeagueScreen tab={state.leagueTab} isAdmin={auth.isAdmin} onNotify={flash} />
+        )}
       </div>
 
       {roll.phase !== 'idle' && (
@@ -515,6 +542,13 @@ export default function App() {
           onSave={saveMemberEdit}
           onDelete={deleteMember}
           onClose={() => setEditing(null)}
+        />
+      )}
+
+      {loginOpen && (
+        <LoginSheet
+          onSignIn={auth.signIn}
+          onClose={() => setLoginOpen(false)}
         />
       )}
 

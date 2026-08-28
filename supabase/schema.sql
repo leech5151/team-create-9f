@@ -66,15 +66,14 @@ create table if not exists matches (
   check (home_team_id <> away_team_id)
 );
 
--- ─── 출전 명단 + 핸디캡 ─────────────────────────────────────────────────────
---  핸디캡은 매 경기 운영자가 직접 넣는 값이라 선수 마스터가 아니라
---  경기별 출전 행에 둔다. 회차·주차마다 달라도 과거 기록이 왜곡되지 않는다.
+-- ─── 출전 명단 ──────────────────────────────────────────────────────────────
+--  누가 어느 팀으로 나왔는지만 기록한다.
+--  핸디캡·패널티는 선수(players)에 붙는 값이다 — migration-002 참고.
 create table if not exists match_players (
   id        uuid primary key default gen_random_uuid(),
   match_id  uuid not null references matches(id) on delete cascade,
   team_id   uuid not null references teams(id)   on delete cascade,
   player_id uuid not null references players(id) on delete cascade,
-  handicap  int  not null default 0 check (handicap between -100 and 300),
   unique (match_id, player_id)
 );
 

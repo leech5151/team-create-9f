@@ -4,16 +4,18 @@ import { GAMES_PER_MATCH, type GameNo, type SideInput } from './types';
  * 상주리그 채점.
  *
  * 형식: 3인 팀전, 팀 1:1. 게임 3개에 각 1승, 3게임 총점에 1승 → 경기당 최대 4승.
- * 핸디캡: 선수별 핸디캡을 매 게임에 더한다 (3게임이면 3번 반영).
+ *
+ * 조정값: 선수별로 핸디를 더하고 패널티를 뺀다. 둘 다 매 게임에 반영되므로
+ * 3게임이면 3번씩 적용된다. 두 값은 크기로만 저장되고 부호는 여기서 정한다.
  */
 
 const GAME_NOS: readonly GameNo[] = [1, 2, 3];
 
 export interface TeamGame {
   gameNo: GameNo;
-  /** Handicap excluded — the "비핸디" figure used as the first tiebreak. */
+  /** Adjustments excluded — the "비핸디" figure used as the first tiebreak. */
   scratch: number;
-  /** Handicap included — the figure that decides the game. */
+  /** Handicap added and penalty subtracted — the figure that decides the game. */
   total: number;
 }
 
@@ -40,14 +42,17 @@ export interface TeamTally {
 
 /** Per-game and aggregate figures for one side. */
 export function tally(side: SideInput): TeamTally {
-  const handicapOf = new Map(side.lineup.map((a) => [a.playerId, a.handicap]));
+  // Net per-player adjustment: handicap adds, penalty subtracts.
+  const adjustmentOf = new Map(
+    side.lineup.map((a) => [a.playerId, a.handicap - a.penalty] as const),
+  );
 
   const games = GAME_NOS.map((gameNo): TeamGame => {
     const rows = side.scores.filter((s) => s.gameNo === gameNo);
     const scratch = rows.reduce((sum, s) => sum + s.pins, 0);
-    // Handicap counts once per player per game.
-    const handicap = rows.reduce((sum, s) => sum + (handicapOf.get(s.playerId) ?? 0), 0);
-    return { gameNo, scratch, total: scratch + handicap };
+    // Counts once per player per game.
+    const adjustment = rows.reduce((sum, s) => sum + (adjustmentOf.get(s.playerId) ?? 0), 0);
+    return { gameNo, scratch, total: scratch + adjustment };
   });
 
   const totals = games.map((g) => g.total);
