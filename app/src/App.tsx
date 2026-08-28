@@ -30,7 +30,7 @@ import type {
 } from './types';
 import { LEAGUE_TABS } from './types';
 
-const APP_TITLE = '9프레임 전용 앱';
+const APP_TITLE = '9FRAME';
 
 const SECTION_TITLES: Record<Exclude<Section, 'home'>, string> = {
   teams: '팀짜기',
