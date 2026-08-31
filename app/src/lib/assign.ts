@@ -25,14 +25,18 @@ export function laneAverage(members: readonly Member[]): number {
 }
 
 /**
- * Lanes hold three players — one per tier — so the number of lanes is how many
- * complete threes the group makes. Anyone left over (at most two) joins an
- * existing lane as a fourth rather than sitting alone.
+ * Each lane holds at most three players, and the draw must always use an even
+ * number of lanes so tables remain paired as 2-lane units.
+ *
+ * Examples: 20 people => 8 lanes, 10 people => 4 lanes, 6 people => 2 lanes.
  */
 export function laneCountFor(attending: readonly Member[]): number {
   const n = attending.length;
   if (n === 0) return 0;
-  return Math.max(1, Math.floor(n / 3));
+
+  const needed = Math.ceil(n / 3);
+  const even = needed % 2 === 0 ? needed : needed + 1;
+  return Math.max(2, even);
 }
 
 /** Highest average first; name then id break ties so the order is stable. */
