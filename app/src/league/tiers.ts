@@ -151,3 +151,28 @@ export function teamScore(members: readonly LeaguePlayer[]): TeamScore {
 
   return { base, handicap, penalty, scored, size: members.length };
 }
+
+
+const TIER_RANK: Record<LeagueTier, number> = { gold: 0, silver: 1, bronze: 2 };
+
+/**
+ * Orders a team's roster 골드 → 실버 → 브론즈, then by 점수 within a tier.
+ *
+ * Tiers are cut across the whole league (`allPlayers`), not within the team —
+ * a team's own three members would otherwise always come out one per tier.
+ * Players with no 점수 sort last.
+ */
+export function orderRoster(
+  members: readonly LeaguePlayer[],
+  allPlayers: readonly LeaguePlayer[],
+): TieredPlayer[] {
+  const tierOf = new Map(assignLeagueTiers(allPlayers).map((p) => [p.id, p.tier] as const));
+
+  return members
+    .map((m) => ({ ...m, tier: tierOf.get(m.id) ?? null }))
+    .sort((a, b) => {
+      const ra = a.tier === null ? 3 : TIER_RANK[a.tier];
+      const rb = b.tier === null ? 3 : TIER_RANK[b.tier];
+      return ra - rb || (b.avg ?? -1) - (a.avg ?? -1) || a.name.localeCompare(b.name, 'ko');
+    });
+}

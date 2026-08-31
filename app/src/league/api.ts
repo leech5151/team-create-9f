@@ -413,3 +413,55 @@ export async function deleteMatch(id: string): Promise<void> {
   const { error } = await client().from('matches').delete().eq('id', id);
   if (error) throw new Error(error.message);
 }
+
+
+// ── Game scores ─────────────────────────────────────────────────
+
+export interface ScoreEntry {
+  playerId: string;
+  gameNo: 1 | 2 | 3;
+  /** null clears a previously recorded score. */
+  pins: number | null;
+}
+
+/**
+ * Replaces the recorded scores for one match.
+ *
+ * Blank entries are deleted rather than stored as zero — a missing score means
+ * "not entered yet", and the standings deliberately skip incomplete matches.
+ * Storing 0 would instead count as a played game with no pins.
+ */
+export async function saveGameScores(
+  matchId: string,
+  entries: readonly ScoreEntry[],
+): Promise<void> {
+  const db = client();
+
+  const filled = entries.filter((e) => e.pins !== null);
+  const cleared = entries.filter((e) => e.pins === null);
+
+  if (filled.length > 0) {
+    const { error } = await db.from('game_scores').upsert(
+      filled.map((e) => ({
+        match_id: matchId,
+        player_id: e.playerId,
+        game_no: e.gameNo,
+        pins: e.pins,
+      })),
+      { onConflict: 'match_id,player_id,game_no' },
+    );
+    if (error) throw new Error(error.message);
+  }
+
+  // Deleting per player keeps the filter simple; a match has at most 6 players.
+  for (const playerId of new Set(cleared.map((e) => e.playerId))) {
+    const games = cleared.filter((e) => e.playerId === playerId).map((e) => e.gameNo);
+    const { error } = await db
+      .from('game_scores')
+      .delete()
+      .eq('match_id', matchId)
+      .eq('player_id', playerId)
+      .in('game_no', games);
+    if (error) throw new Error(error.message);
+  }
+}

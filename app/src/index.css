@@ -1308,6 +1308,48 @@ input {
   border-left: 1px solid rgba(0, 0, 0, 0.06);
 }
 
+/* Team name on the left, result on the right of the same row. */
+.fixture__teamRow {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.outcome {
+  flex: none;
+  text-align: right;
+  line-height: 1.1;
+}
+
+.outcome__label {
+  display: block;
+  font-size: 17px;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+}
+
+.outcome__pts {
+  display: block;
+  margin-top: 1px;
+  font-size: 10px;
+  font-weight: 800;
+  color: #a8adb4;
+  font-variant-numeric: tabular-nums;
+}
+
+.outcome--win .outcome__label {
+  color: #0e9d8b;
+}
+
+.outcome--loss .outcome__label {
+  color: #c93a16;
+}
+
+.outcome--draw .outcome__label {
+  color: #8a8f98;
+}
+
 .fixture__team {
   font-size: 15px;
   font-weight: 800;
@@ -1328,6 +1370,31 @@ input {
   font-size: 12.5px;
   font-weight: 700;
   color: #4a4f57;
+}
+
+.fixture__tier {
+  display: inline-block;
+  width: 5px;
+  height: 5px;
+  border-radius: 2px;
+  margin-right: 5px;
+  vertical-align: 1px;
+}
+
+.scoreTeam__work {
+  margin-left: 6px;
+  font-style: normal;
+  font-size: 10px;
+  font-weight: 700;
+  color: #a8adb4;
+}
+
+.scorePreview__work {
+  margin-top: 7px;
+  font-size: 10.5px;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.6);
+  font-variant-numeric: tabular-nums;
 }
 
 .fixture__adj {
@@ -1356,6 +1423,405 @@ input {
   font-weight: 800;
   color: #b0b4ba;
   letter-spacing: 0.06em;
+}
+
+/* ── League: score entry grid ──────────────────────────────── */
+
+.fixture__actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: none;
+}
+
+.fixture__edit--done {
+  background: #0e9d8b;
+}
+
+.fixture__badge {
+  margin-left: 4px;
+  padding: 0 4px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.28);
+  font-style: normal;
+  font-size: 9px;
+  font-weight: 800;
+}
+
+.scoreTeam {
+  margin-top: 16px;
+}
+
+.scoreTeam__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.scoreTeam__name {
+  font-size: 14px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+.scoreTeam__total {
+  font-size: 15px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.scoreTeam__partial {
+  margin-left: 6px;
+  font-style: normal;
+  font-size: 10px;
+  font-weight: 800;
+  color: #c93a16;
+}
+
+.scoreGrid {
+  margin-top: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.scoreGrid__head,
+.scoreGrid__row {
+  display: grid;
+  grid-template-columns: 1fr repeat(3, 46px) 38px;
+  gap: 5px;
+  align-items: center;
+}
+
+.scoreGrid__gh {
+  font-size: 10px;
+  font-weight: 800;
+  color: #8a8f98;
+  text-align: center;
+}
+
+.scoreGrid__name {
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.scoreGrid__adj {
+  margin-left: 4px;
+  font-style: normal;
+  font-size: 10px;
+  font-weight: 800;
+  color: #0e9d8b;
+}
+
+.scoreGrid__adj--pen {
+  color: #c93a16;
+}
+
+.scoreGrid__input {
+  height: 40px;
+  border-radius: 10px;
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  background: #fff;
+  font-size: 15px;
+  font-weight: 700;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+  min-width: 0;
+  padding: 0 2px;
+}
+
+.scoreGrid__input:focus {
+  outline: none;
+  border-color: #ff4a21;
+}
+
+.scoreGrid__sum {
+  font-size: 13px;
+  font-weight: 800;
+  color: #6b6f76;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.scorePreview {
+  margin-top: 16px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: #14161a;
+  color: #fff;
+}
+
+.scorePreview__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 12.5px;
+  font-weight: 800;
+}
+
+.scorePreview__pts {
+  font-size: 18px;
+  font-weight: 800;
+  color: #ff7a5c;
+  font-variant-numeric: tabular-nums;
+}
+
+.scorePreview__games {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 9px;
+}
+
+.scorePreview__game {
+  padding: 4px 8px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.09);
+  font-size: 10.5px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.scorePreview__game em {
+  font-style: normal;
+  margin-left: 4px;
+  color: #ff7a5c;
+  font-weight: 800;
+}
+
+.scorePreview__rule {
+  color: rgba(255, 255, 255, 0.5) !important;
+  font-size: 9.5px;
+}
+
+/* ── League dashboard (리그 메인) ──────────────────────────── */
+
+.leaderCard {
+  margin-top: 16px;
+  padding: 16px 18px;
+  border-radius: 18px;
+  background: #14161a;
+  color: #fff;
+  position: relative;
+  overflow: hidden;
+  animation: riseIn 0.3s ease both;
+}
+
+.leaderCard__label {
+  font-size: 10.5px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  color: #ff7a5c;
+}
+
+.leaderCard__name {
+  font-size: 24px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  margin-top: 3px;
+}
+
+.leaderCard__pts {
+  position: absolute;
+  top: 14px;
+  right: 18px;
+  font-size: 34px;
+  font-weight: 800;
+  letter-spacing: -0.04em;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+
+.leaderCard__unit {
+  font-size: 13px;
+  font-weight: 800;
+  color: rgba(255, 255, 255, 0.5);
+  margin-left: 3px;
+}
+
+.leaderCard__roster {
+  margin-top: 6px;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.55);
+}
+
+.rankList {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  margin-top: 10px;
+}
+
+.rankRow {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 11px 13px;
+  border-radius: 14px;
+  background: #fff;
+  border: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+.rankRow--podium {
+  border-color: rgba(255, 74, 33, 0.22);
+  background: #fffaf8;
+}
+
+.rankRow__pos {
+  flex: none;
+  width: 30px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+}
+
+.rankRow__num {
+  font-size: 17px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+
+/* Neutral by default; only an actual move takes on colour. */
+.rankRow__move {
+  font-size: 9.5px;
+  font-weight: 800;
+  color: #c2c6cc;
+  line-height: 1;
+}
+
+.rankRow__move--up {
+  color: #0e9d8b;
+}
+
+.rankRow__move--down {
+  color: #c93a16;
+}
+
+.rankRow__body {
+  flex: 1;
+  min-width: 0;
+}
+
+.rankRow__name {
+  font-size: 15px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+.rankRow__roster {
+  margin-top: 2px;
+  font-size: 11px;
+
+  font-weight: 600;
+  color: #a8adb4;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.rankRow__meta {
+  margin-top: 3px;
+  font-size: 10.5px;
+  font-weight: 700;
+  color: #8a8f98;
+  font-variant-numeric: tabular-nums;
+}
+
+.rankRow__score {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+}
+
+.rankRow__pts {
+  font-size: 20px;
+  font-weight: 800;
+  color: #ff4a21;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+
+.rankRow__gain {
+  font-size: 10px;
+  font-weight: 800;
+  color: #0e9d8b;
+}
+
+/* ── League: individual records (MVP · 에버 향상) ───────────── */
+
+.statList {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.statRow2 {
+  display: grid;
+  grid-template-columns: 20px 1fr auto;
+  grid-template-areas:
+    'pos name value'
+    'pos sub  value';
+  align-items: center;
+  gap: 0 9px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: #fff;
+  border: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+.statRow2--first {
+  border-color: rgba(255, 74, 33, 0.22);
+  background: #fffaf8;
+}
+
+.statRow2__pos {
+  grid-area: pos;
+  font-size: 13px;
+  font-weight: 800;
+  color: #8a8f98;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+.statRow2__name {
+  grid-area: name;
+  font-size: 14px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+.statRow2__sub {
+  grid-area: sub;
+  margin-top: 2px;
+  font-size: 10.5px;
+  font-weight: 700;
+  color: #a8adb4;
+  font-variant-numeric: tabular-nums;
+}
+
+.statRow2__value {
+  grid-area: value;
+  font-size: 18px;
+  font-weight: 800;
+  color: #14161a;
+  font-variant-numeric: tabular-nums;
+}
+
+.statRow2__value--up {
+  color: #0e9d8b;
+  font-size: 16px;
 }
 
 /* ── League table (프리미어리그 스타일 순위표) ──────────────── */

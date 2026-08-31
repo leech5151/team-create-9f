@@ -10,40 +10,30 @@ import {
   deletePlayer,
   deleteTeam,
   insertPlayers,
+  saveGameScores,
   updateMatch,
   updatePlayer,
   updateSeason,
   updateTeam,
   type Match,
+  type ScoreEntry,
   type Season,
   type Team,
   type PlayerDraft,
 } from '../league/api';
 import { useLeague } from '../league/useLeague';
+import { orderRoster } from '../league/tiers';
 import { currentWeekNo, weekDays } from '../league/schedule';
 import { AddPlayersSheet } from '../components/AddPlayersSheet';
 import { PlayerSheet } from '../components/PlayerSheet';
 import { SeasonSheet } from '../components/league/SeasonSheet';
 import { TeamSheet } from '../components/league/TeamSheet';
 import { MatchSheet } from '../components/league/MatchSheet';
+import { ScoreSheet } from '../components/league/ScoreSheet';
 import { PlayersTab } from './league/PlayersTab';
 import { PlayTab } from './league/PlayTab';
 import { ScheduleTab } from './league/ScheduleTab';
-
-interface TabSpec {
-  title: string;
-  blurb: string;
-  planned: string[];
-}
-
-/** Tabs still to be built — stated plainly rather than mocked with fake data. */
-const PLANNED: Record<'main', TabSpec> = {
-  main: {
-    title: '리그 메인',
-    blurb: '개인 기록과 회차 요약을 보는 화면입니다. 순위와 일정은 경기일정 탭에 있어요.',
-    planned: ['개인 에버리지 추이', '개인 기록 상위', '회차 요약'],
-  },
-};
+import { MainTab } from './league/MainTab';
 
 interface Props {
   tab: LeagueTab;
@@ -64,6 +54,7 @@ export function LeagueScreen({ tab, isAdmin, onNotify }: Props) {
   const [editingTeam, setEditingTeam] = useState<Team | null>(null);
   const [matchSheet, setMatchSheet] = useState(false);
   const [editingMatch, setEditingMatch] = useState<Match | null>(null);
+  const [recordingMatch, setRecordingMatch] = useState<Match | null>(null);
 
   // Which 회차/주차 is on screen. Held in memory rather than persisted so a
   // newly created season becomes the selection without extra clicks.
@@ -142,6 +133,23 @@ export function LeagueScreen({ tab, isAdmin, onNotify }: Props) {
       .filter((m) => m.weekId === week.id)
       .flatMap((m) => [m.homeTeamId, m.awayTeamId]);
   }, [snapshot.matches, week]);
+
+  /** Team name plus roster, as the score sheet needs it. */
+  const sideFor = (teamId: string) => {
+    const team = snapshot.teams.find((t) => t.id === teamId);
+    const byId = new Map(snapshot.players.map((p) => [p.id, p] as const));
+    return {
+      teamId,
+      teamName: team?.name ?? '삭제된 팀',
+      roster: orderRoster(
+        snapshot.entries
+          .filter((e) => e.teamId === teamId)
+          .map((e) => byId.get(e.playerId))
+          .filter((p): p is LeaguePlayer => p !== undefined),
+        snapshot.players,
+      ),
+    };
+  };
 
   /** Wraps a write so failures come back as a message instead of throwing. */
   const attempt = async (action: () => Promise<void>, success: string): Promise<string | null> => {
@@ -240,6 +248,11 @@ export function LeagueScreen({ tab, isAdmin, onNotify }: Props) {
         )
       : Promise.resolve('수정할 대진을 찾지 못했습니다.');
 
+  const recordScores = (entries: ScoreEntry[]) =>
+    recordingMatch
+      ? attempt(() => saveGameScores(recordingMatch.id, entries), '경기 기록을 저장했어요')
+      : Promise.resolve('기록할 대진을 찾지 못했습니다.');
+
   const removeMatch = (match: Match) =>
     attempt(() => deleteMatch(match.id), '대진을 삭제했어요');
 
@@ -275,6 +288,7 @@ export function LeagueScreen({ tab, isAdmin, onNotify }: Props) {
           onCreateTeam={() => setTeamSheet(true)}
           onEditTeam={setEditingTeam}
           onCreateMatch={() => setMatchSheet(true)}
+          onRecordMatch={setRecordingMatch}
           onEditMatch={setEditingMatch}
           onRetry={() => void league.refresh()}
         />
@@ -296,7 +310,19 @@ export function LeagueScreen({ tab, isAdmin, onNotify }: Props) {
         />
       )}
 
-      {tab === 'main' && <PlannedTab spec={PLANNED.main} />}
+      {tab === 'main' && (
+        <MainTab
+          snapshot={snapshot}
+          state={league.state}
+          error={league.error}
+          season={season}
+          onPickSeason={(id) => {
+            setSeasonId(id);
+            setWeekId(null);
+          }}
+          onRetry={() => void league.refresh()}
+        />
+      )}
 
       {addOpen && (
         <AddPlayersSheet
@@ -367,6 +393,17 @@ export function LeagueScreen({ tab, isAdmin, onNotify }: Props) {
         />
       )}
 
+      {recordingMatch && (
+        <ScoreSheet
+          match={recordingMatch}
+          home={sideFor(recordingMatch.homeTeamId)}
+          away={sideFor(recordingMatch.awayTeamId)}
+          existing={snapshot.scores.filter((s) => s.matchId === recordingMatch.id)}
+          onSave={recordScores}
+          onClose={() => setRecordingMatch(null)}
+        />
+      )}
+
       {editingMatch && week && (
         <MatchSheet
           match={editingMatch}
@@ -386,22 +423,3 @@ export function LeagueScreen({ tab, isAdmin, onNotify }: Props) {
   );
 }
 
-function PlannedTab({ spec }: { spec: TabSpec }) {
-  return (
-    <div className="screen">
-      <div className="eyebrow">상주리그</div>
-      <div className="title">{spec.title}</div>
-      <div className="blank">
-        <div className="blank__title">아직 만들지 않았어요</div>
-        <div className="blank__sub">{spec.blurb}</div>
-        <ul className="plannedList">
-          {spec.planned.map((item) => (
-            <li className="plannedList__item" key={item}>
-              {item}
-            </li>
-          ))}
-        </ul>
-      </div>
-    </div>
-  );
-}

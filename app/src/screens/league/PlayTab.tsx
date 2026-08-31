@@ -1,8 +1,16 @@
 import type { LeagueSnapshot, Match, Season, Team, Week } from '../../league/api';
 import type { LeaguePlayer } from '../../league/types';
 import type { LoadState } from '../../league/useLeague';
-import { teamScore, type TeamScore } from '../../league/tiers';
+import { orderRoster, teamScore, TIER_META, type TeamScore } from '../../league/tiers';
+import type { TieredPlayer } from '../../league/tiers';
 import { isCurrentWeek, parseDate, shortDate, weekRange } from '../../league/schedule';
+import {
+  OUTCOME_LABEL,
+  outcomeFor,
+  pointsFor,
+  resultByMatch,
+  type Outcome,
+} from '../../league/standings';
 
 interface Props {
   snapshot: LeagueSnapshot;
@@ -18,6 +26,7 @@ interface Props {
   onCreateTeam: () => void;
   onEditTeam: (team: Team) => void;
   onCreateMatch: () => void;
+  onRecordMatch: (match: Match) => void;
   onEditMatch: (match: Match) => void;
   onRetry: () => void;
 }
@@ -40,6 +49,7 @@ export function PlayTab({
   onCreateTeam,
   onEditTeam,
   onCreateMatch,
+  onRecordMatch,
   onEditMatch,
   onRetry,
 }: Props) {
@@ -62,13 +72,24 @@ export function PlayTab({
     : [];
 
   const playerById = new Map(players.map((p) => [p.id, p] as const));
-  const rosterOf = (teamId: string): LeaguePlayer[] =>
-    entries
-      .filter((e) => e.teamId === teamId)
-      .map((e) => playerById.get(e.playerId))
-      .filter((p): p is LeaguePlayer => p !== undefined);
+  /** Rosters always read 골드 → 실버 → 브론즈. */
+  const rosterOf = (teamId: string): TieredPlayer[] =>
+    orderRoster(
+      entries
+        .filter((e) => e.teamId === teamId)
+        .map((e) => playerById.get(e.playerId))
+        .filter((p): p is LeaguePlayer => p !== undefined),
+      players,
+    );
 
   const teamName = (id: string) => teams.find((t) => t.id === id)?.name ?? '삭제된 팀';
+
+  /** Completed results, so a played fixture can show 승리/패배. */
+  const results = season ? resultByMatch(snapshot, season.id) : new Map();
+
+  /** How many of the 18 score slots a fixture already has filled. */
+  const recordedCount = (matchId: string) =>
+    snapshot.scores.filter((s) => s.matchId === matchId).length;
 
   return (
     <div className="screen">
@@ -254,20 +275,43 @@ export function PlayTab({
                           </span>
                         </span>
                         {isAdmin && (
-                          <button
-                            type="button"
-                            className="fixture__edit"
-                            onClick={() => onEditMatch(m)}
-                            aria-label="대진 수정"
-                          >
-                            수정
-                          </button>
+                          <span className="fixture__actions">
+                            <button
+                              type="button"
+                              className={`fixture__edit${recordedCount(m.id) > 0 ? ' fixture__edit--done' : ''}`}
+                              onClick={() => onRecordMatch(m)}
+                              aria-label="경기 기록"
+                            >
+                              경기기록
+                              {recordedCount(m.id) > 0 && (
+                                <em className="fixture__badge">{recordedCount(m.id)}</em>
+                              )}
+                            </button>
+                            <button
+                              type="button"
+                              className="fixture__edit"
+                              onClick={() => onEditMatch(m)}
+                              aria-label="대진 수정"
+                            >
+                              수정
+                            </button>
+                          </span>
                         )}
                       </div>
                       <div className="fixture__body">
-                        <FixtureSide name={teamName(m.homeTeamId)} roster={rosterOf(m.homeTeamId)} />
+                        <FixtureSide
+                          name={teamName(m.homeTeamId)}
+                          roster={rosterOf(m.homeTeamId)}
+                          outcome={results.has(m.id) ? outcomeFor(results.get(m.id)!, true) : null}
+                          points={results.has(m.id) ? pointsFor(results.get(m.id)!, true) : null}
+                        />
                         <div className="fixture__vs">VS</div>
-                        <FixtureSide name={teamName(m.awayTeamId)} roster={rosterOf(m.awayTeamId)} />
+                        <FixtureSide
+                          name={teamName(m.awayTeamId)}
+                          roster={rosterOf(m.awayTeamId)}
+                          outcome={results.has(m.id) ? outcomeFor(results.get(m.id)!, false) : null}
+                          points={results.has(m.id) ? pointsFor(results.get(m.id)!, false) : null}
+                        />
                       </div>
                     </div>
                   ))}
@@ -317,10 +361,24 @@ function TotalLine({ score }: { score: TeamScore }) {
   );
 }
 
-function FixtureSide({ name, roster }: { name: string; roster: readonly LeaguePlayer[] }) {
+function FixtureSide({ name, roster, outcome, points }: {
+  name: string;
+  roster: readonly TieredPlayer[];
+  /** null until both sides' scores are in. */
+  outcome: Outcome | null;
+  points: string | null;
+}) {
   return (
     <div className="fixture__side">
-      <div className="fixture__team">{name}</div>
+      <div className="fixture__teamRow">
+        <div className="fixture__team">{name}</div>
+        {outcome && (
+          <div className={`outcome outcome--${outcome}`}>
+            <span className="outcome__label">{OUTCOME_LABEL[outcome]}</span>
+            {points && <span className="outcome__pts">{points}</span>}
+          </div>
+        )}
+      </div>
       <TotalLine score={teamScore(roster)} />
       <div className="fixture__players">
         {roster.length === 0 ? (
@@ -328,6 +386,9 @@ function FixtureSide({ name, roster }: { name: string; roster: readonly LeaguePl
         ) : (
           roster.map((p) => (
             <span className="fixture__player" key={p.id}>
+              {p.tier && (
+                <em className="fixture__tier" style={{ background: TIER_META[p.tier].color }} />
+              )}
               {p.name}
               {p.handicap > 0 && <em className="fixture__adj">+{p.handicap}</em>}
               {p.penalty > 0 && <em className="fixture__adj fixture__adj--pen">−{p.penalty}</em>}
@@ -346,7 +407,7 @@ function TeamChip({
   onEdit,
 }: {
   team: Team;
-  roster: readonly LeaguePlayer[];
+  roster: readonly TieredPlayer[];
   editable: boolean;
   onEdit: () => void;
 }) {
