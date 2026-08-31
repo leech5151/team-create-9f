@@ -4,6 +4,7 @@ import type { LeaguePlayer } from '../../league/types';
 import {
   groupByTier,
   scoreBreakdown,
+  scoreStats,
   TIER_META,
   TIER_ORDER,
   type TieredPlayer,
@@ -23,6 +24,7 @@ export function PlayersTab({ snapshot, state, error, isAdmin, onAdd, onEdit, onR
   const { players } = snapshot;
   const { tiers, unranked } = groupByTier(players);
   const ranked = players.length - unranked.length;
+  const stats = scoreStats(players);
 
   const row = (p: TieredPlayer) => (
     <div className="memberRow" key={p.id}>
@@ -82,9 +84,24 @@ export function PlayersTab({ snapshot, state, error, isAdmin, onAdd, onEdit, onR
         </div>
       )}
 
+      {stats && (
+        <div className="statRow">
+          <div className="stat">
+            <div className="stat__k">평균 점수</div>
+            <div className="stat__v stat__v--num">{stats.mean}</div>
+          </div>
+          <div className="stat">
+            <div className="stat__k">점수 범위</div>
+            <div className="stat__v stat__v--num">
+              {stats.min} ~ {stats.max}
+            </div>
+          </div>
+        </div>
+      )}
+
       {ranked > 0 && (
         <>
-          <div className="statRow">
+          <div className="statRow statRow--tiers">
             {TIER_ORDER.map((t) => (
               <div className="stat" key={t}>
                 <div className="stat__k" style={{ color: TIER_META[t].color }}>
@@ -95,7 +112,7 @@ export function PlayersTab({ snapshot, state, error, isAdmin, onAdd, onEdit, onR
             ))}
           </div>
           <div className="hintBox hintBox--tight">
-            핸디 포함 점수 순으로 상위 30% 골드 · 40% 실버 · 30% 브론즈
+점수 순으로 상위 30% 골드 · 40% 실버 · 30% 브론즈 (핸디는 티어에 반영하지 않음)
           </div>
         </>
       )}
@@ -105,7 +122,7 @@ export function PlayersTab({ snapshot, state, error, isAdmin, onAdd, onEdit, onR
           <div className="blank__title">등록된 선수가 없어요</div>
           <div className="blank__sub">
             {isAdmin
-              ? '선수를 등록하면 핸디 포함 점수로 티어가 자동으로 나뉩니다.'
+              ? '선수를 등록하면 점수 순으로 티어가 자동으로 나뉩니다.'
               : '운영자가 선수를 등록하면 여기에 표시됩니다.'}
           </div>
           {isAdmin && (
@@ -119,8 +136,8 @@ export function PlayersTab({ snapshot, state, error, isAdmin, onAdd, onEdit, onR
           {TIER_ORDER.map((t) => {
             const group = tiers[t];
             if (group.length === 0) return null;
-            const top = group[0]?.effective;
-            const bottom = group[group.length - 1]?.effective;
+            const top = group[0]?.avg;
+            const bottom = group[group.length - 1]?.avg;
             return (
               <div className="tierSection" key={t}>
                 <div className="tierGroup__head">
@@ -154,9 +171,8 @@ export function PlayersTab({ snapshot, state, error, isAdmin, onAdd, onEdit, onR
 }
 
 /**
- * Shows the tier basis with its working: `176 (164 +12)`. The parenthetical is
- * dropped when nothing adjusts the score, so an unadjusted player reads as a
- * plain number rather than `164 (164)`.
+ * Shows the 점수 the tier is cut on, with any adjustments beside it:
+ * `182 (+12)`. The parenthetical is dropped when nothing applies.
  */
 function ScoreCell({ player }: { player: TieredPlayer }) {
   const parts = scoreBreakdown(player);
@@ -165,18 +181,19 @@ function ScoreCell({ player }: { player: TieredPlayer }) {
   // opening parenthesis line up down the list regardless of who has an
   // adjustment.
   return (
-    <div className="scoreCell" title="핸디 포함 점수 (원점수 조정)">
+    <div className="scoreCell" title="점수 (핸디 · 패널티)">
       <span className={`scoreCell__eff${parts === null ? ' scoreCell__eff--none' : ''}`}>
-        {parts === null ? '–' : parts.effective}
+        {parts === null ? '–' : parts.base}
       </span>
       <span className="scoreCell__parts">
         {parts !== null && parts.adjustments.length > 0 && (
           <>
-            ({parts.base}
-            {parts.adjustments.map((a) => (
+            (
+            {parts.adjustments.map((a, i) => (
               <em
                 key={a}
                 className={`scoreCell__adj${a.startsWith('−') ? ' scoreCell__adj--pen' : ''}`}
+                style={i === 0 ? { marginLeft: 0 } : undefined}
               >
                 {a}
               </em>

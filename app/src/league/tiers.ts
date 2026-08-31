@@ -17,62 +17,74 @@ const SILVER_SHARE = 0.4;
 export interface TieredPlayer extends LeaguePlayer {
   /** null for players with no 점수 recorded — they cannot be ranked. */
   tier: LeagueTier | null;
-  /** 점수 with the handicap added and the penalty taken off. */
-  effective: number | null;
-}
-
-/**
- * The figure the tiers are cut on: the registered 점수 adjusted the same way a
- * game is, so a big handicap moves a player up and a penalty moves them down.
- */
-export function effectiveScore(p: LeaguePlayer): number | null {
-  if (p.avg === null) return null;
-  return p.avg + p.handicap - p.penalty;
 }
 
 export interface ScoreBreakdown {
-  /** 점수 + 핸디 − 패널티 — the figure tiers and games are decided on. */
-  effective: number;
-  /** The registered 점수 before adjustment. */
+  /** The registered 점수 — what tiers are cut on. */
   base: number;
   /** Signed adjustment labels, e.g. ["+12", "−6"]. Empty when nothing applies. */
   adjustments: string[];
 }
 
 /**
- * Splits an effective score into its parts so the UI can show the working:
- * `176 (164 +12)`. Returns null when no 점수 is recorded.
+ * Splits a player's figures for display: `182 (+12)`.
+ *
+ * The handicap is shown but kept out of the headline number, because ranking on
+ * an adjusted score would push a heavily handicapped player up a tier — the
+ * opposite of what a handicap is for.
  */
 export function scoreBreakdown(p: LeaguePlayer): ScoreBreakdown | null {
   if (p.avg === null) return null;
   const adjustments: string[] = [];
   if (p.handicap > 0) adjustments.push(`+${p.handicap}`);
   if (p.penalty > 0) adjustments.push(`−${p.penalty}`);
-  return { effective: p.avg + p.handicap - p.penalty, base: p.avg, adjustments };
+  return { base: p.avg, adjustments };
+}
+
+export interface ScoreStats {
+  /** How many players have a 점수 recorded. */
+  count: number;
+  /** Mean of the raw 점수, rounded — handicaps are excluded, as with tiers. */
+  mean: number;
+  min: number;
+  max: number;
+}
+
+/** Summary of the raw 점수 across everyone who has one. Null when nobody does. */
+export function scoreStats(players: readonly LeaguePlayer[]): ScoreStats | null {
+  const scores = players
+    .map((p) => p.avg)
+    .filter((v): v is number => v !== null);
+  if (scores.length === 0) return null;
+
+  const sum = scores.reduce((acc, v) => acc + v, 0);
+  return {
+    count: scores.length,
+    mean: Math.round(sum / scores.length),
+    min: Math.min(...scores),
+    max: Math.max(...scores),
+  };
 }
 
 /**
- * Splits players into 골드 / 실버 / 브론즈 by effective score.
+ * Splits players into 골드 / 실버 / 브론즈 by raw 점수.
  *
  * Cuts are by rank, not by score threshold, so the shares hold regardless of
  * how the scores cluster. Players with no 점수 are returned with `tier: null`
  * rather than being ranked as zero, which would misfile them as 브론즈.
  *
- * Returned in ranking order: highest effective score first, unranked last.
+ * Returned in ranking order: highest 점수 first, unranked last.
  */
 export function assignLeagueTiers(players: readonly LeaguePlayer[]): TieredPlayer[] {
   const withScore: TieredPlayer[] = [];
   const withoutScore: TieredPlayer[] = [];
 
   for (const p of players) {
-    const effective = effectiveScore(p);
-    if (effective === null) withoutScore.push({ ...p, tier: null, effective: null });
-    else withScore.push({ ...p, tier: 'bronze', effective });
+    if (p.avg === null) withoutScore.push({ ...p, tier: null });
+    else withScore.push({ ...p, tier: 'bronze' });
   }
 
-  withScore.sort(
-    (a, b) => (b.effective ?? 0) - (a.effective ?? 0) || a.name.localeCompare(b.name, 'ko'),
-  );
+  withScore.sort((a, b) => (b.avg ?? 0) - (a.avg ?? 0) || a.name.localeCompare(b.name, 'ko'));
 
   const n = withScore.length;
   // At least one 골드 whenever anyone is ranked, so a tiny league still has a top.
@@ -101,4 +113,41 @@ export function groupByTier(players: readonly LeaguePlayer[]): {
     },
     unranked: ranked.filter((p) => p.tier === null),
   };
+}
+
+
+export interface TeamScore {
+  /** Sum of the members' raw 점수. */
+  base: number;
+  /** Sum of the members' handicaps. */
+  handicap: number;
+  /** Sum of the members' penalties. */
+  penalty: number;
+  /** How many members have a 점수 recorded, out of how many are on the team. */
+  scored: number;
+  size: number;
+}
+
+/**
+ * Combined figures for a team, so two sides of a fixture can be compared at a
+ * glance. Members without a 점수 contribute nothing to `base` but still count
+ * toward `size`, which is what makes a partial total visible rather than
+ * silently low.
+ */
+export function teamScore(members: readonly LeaguePlayer[]): TeamScore {
+  let base = 0;
+  let handicap = 0;
+  let penalty = 0;
+  let scored = 0;
+
+  for (const m of members) {
+    if (m.avg !== null) {
+      base += m.avg;
+      scored += 1;
+    }
+    handicap += m.handicap;
+    penalty += m.penalty;
+  }
+
+  return { base, handicap, penalty, scored, size: members.length };
 }

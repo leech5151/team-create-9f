@@ -55,11 +55,16 @@ export type Screen = 'roster' | 'draw' | 'result' | 'history';
 /** Tabs *within* the 상주리그 feature. */
 export type LeagueTab = 'main' | 'play' | 'schedule' | 'players';
 
-export const LEAGUE_TABS: readonly { key: LeagueTab; label: string }[] = [
+/**
+ * `adminOnly` tabs are hidden from readers entirely rather than shown
+ * read-only — 경기설정 exists to configure the league, and everything a
+ * participant needs to see is on 경기일정.
+ */
+export const LEAGUE_TABS: readonly { key: LeagueTab; label: string; adminOnly?: boolean }[] = [
   { key: 'main', label: '메인' },
-  { key: 'play', label: '경기진행' },
   { key: 'schedule', label: '경기일정' },
   { key: 'players', label: '선수명단' },
+  { key: 'play', label: '경기설정', adminOnly: true },
 ];
 export type Phase = 'idle' | 'rolling' | 'landed';
 export type ResultView = 'cards' | 'board';

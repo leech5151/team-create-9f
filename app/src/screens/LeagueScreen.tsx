@@ -5,14 +5,22 @@ import {
   createMatch,
   createSeason,
   createTeam,
+  deleteSeason,
   deleteMatch,
   deletePlayer,
+  deleteTeam,
   insertPlayers,
+  updateMatch,
   updatePlayer,
+  updateSeason,
+  updateTeam,
   type Match,
+  type Season,
+  type Team,
   type PlayerDraft,
 } from '../league/api';
 import { useLeague } from '../league/useLeague';
+import { currentWeekNo, weekDays } from '../league/schedule';
 import { AddPlayersSheet } from '../components/AddPlayersSheet';
 import { PlayerSheet } from '../components/PlayerSheet';
 import { SeasonSheet } from '../components/league/SeasonSheet';
@@ -20,6 +28,7 @@ import { TeamSheet } from '../components/league/TeamSheet';
 import { MatchSheet } from '../components/league/MatchSheet';
 import { PlayersTab } from './league/PlayersTab';
 import { PlayTab } from './league/PlayTab';
+import { ScheduleTab } from './league/ScheduleTab';
 
 interface TabSpec {
   title: string;
@@ -28,16 +37,11 @@ interface TabSpec {
 }
 
 /** Tabs still to be built — stated plainly rather than mocked with fake data. */
-const PLANNED: Record<'main' | 'schedule', TabSpec> = {
+const PLANNED: Record<'main', TabSpec> = {
   main: {
     title: '리그 메인',
-    blurb: '현재 시즌 순위와 최근 경기 결과를 한눈에 보는 화면입니다.',
-    planned: ['시즌 순위표', '최근 경기 결과', '개인 기록 상위'],
-  },
-  schedule: {
-    title: '경기 일정',
-    blurb: '회차별 전체 일정과 주차 날짜를 관리하는 화면입니다.',
-    planned: ['주차 날짜 지정', '전체 일정 한눈에 보기', '팀 구성 수정'],
+    blurb: '개인 기록과 회차 요약을 보는 화면입니다. 순위와 일정은 경기일정 탭에 있어요.',
+    planned: ['개인 에버리지 추이', '개인 기록 상위', '회차 요약'],
   },
 };
 
@@ -55,8 +59,11 @@ export function LeagueScreen({ tab, isAdmin, onNotify }: Props) {
   const [addOpen, setAddOpen] = useState(false);
   const [editing, setEditing] = useState<LeaguePlayer | null>(null);
   const [seasonSheet, setSeasonSheet] = useState(false);
+  const [editingSeason, setEditingSeason] = useState<Season | null>(null);
   const [teamSheet, setTeamSheet] = useState(false);
+  const [editingTeam, setEditingTeam] = useState<Team | null>(null);
   const [matchSheet, setMatchSheet] = useState(false);
+  const [editingMatch, setEditingMatch] = useState<Match | null>(null);
 
   // Which 회차/주차 is on screen. Held in memory rather than persisted so a
   // newly created season becomes the selection without extra clicks.
@@ -73,9 +80,25 @@ export function LeagueScreen({ tab, isAdmin, onNotify }: Props) {
     [snapshot.weeks, season],
   );
 
-  const week = useMemo(
-    () => seasonWeeks.find((w) => w.id === weekId) ?? seasonWeeks[0] ?? null,
-    [seasonWeeks, weekId],
+  /**
+   * Falls back to the week containing today rather than week 1, so opening the
+   * tab mid-season lands on the round actually being played.
+   */
+  const week = useMemo(() => {
+    const chosen = seasonWeeks.find((w) => w.id === weekId);
+    if (chosen) return chosen;
+    const nowWeek = season ? currentWeekNo(season.startDate, season.totalWeeks) : null;
+    return (
+      (nowWeek === null ? undefined : seasonWeeks.find((w) => w.weekNo === nowWeek)) ??
+      seasonWeeks[0] ??
+      null
+    );
+  }, [seasonWeeks, weekId, season]);
+
+  /** The seven dates of the selected week, for the fixture day picker. */
+  const days = useMemo(
+    () => (season && week ? weekDays(season.startDate, week.weekNo) : []),
+    [season, week],
   );
 
   const seasonTeams = useMemo(
@@ -93,6 +116,24 @@ export function LeagueScreen({ tab, isAdmin, onNotify }: Props) {
     );
     return snapshot.players.filter((p) => !taken.has(p.id));
   }, [snapshot.players, snapshot.entries, season]);
+
+  /** Current members of the team being edited, in roster order. */
+  const editingMemberIds = useMemo(() => {
+    if (!editingTeam) return [];
+    return snapshot.entries
+      .filter((e) => e.teamId === editingTeam.id)
+      .map((e) => e.playerId);
+  }, [snapshot.entries, editingTeam]);
+
+  /**
+   * Editing must offer the team's own members too, not just free agents —
+   * otherwise reopening the sheet would show an empty selection.
+   */
+  const editablePool = useMemo(() => {
+    if (!editingTeam) return unassigned;
+    const own = new Set(editingMemberIds);
+    return [...snapshot.players.filter((p) => own.has(p.id)), ...unassigned];
+  }, [snapshot.players, unassigned, editingTeam, editingMemberIds]);
 
   /** Teams already fixtured in the selected week; they cannot play twice. */
   const busyTeamIds = useMemo(() => {
@@ -135,11 +176,22 @@ export function LeagueScreen({ tab, isAdmin, onNotify }: Props) {
   };
 
   // ── Season / team / match mutations ──────────────────────────
-  const addSeason = (edition: number, totalWeeks: number, title: string | null) =>
+  const addSeason = (edition: number, totalWeeks: number, title: string | null, startDate: string) =>
     attempt(
-      () => createSeason(edition, totalWeeks, title),
+      () => createSeason(edition, totalWeeks, title, startDate),
       `${edition}회를 만들었어요 (${totalWeeks}주차)`,
     );
+
+  const saveSeason = (edition: number, totalWeeks: number, title: string | null, startDate: string) =>
+    editingSeason
+      ? attempt(
+          () => updateSeason(editingSeason.id, edition, totalWeeks, title, startDate),
+          `${edition}회 설정을 저장했어요`,
+        )
+      : Promise.resolve('수정할 회차를 찾지 못했습니다.');
+
+  const removeSeason = (season: Season) =>
+    attempt(() => deleteSeason(season.id), `${season.edition}회를 삭제했어요`);
 
   const addTeam = (name: string, playerIds: string[]) =>
     season
@@ -149,19 +201,47 @@ export function LeagueScreen({ tab, isAdmin, onNotify }: Props) {
         )
       : Promise.resolve('회차를 먼저 만들어 주세요.');
 
-  const addMatch = (homeTeamId: string, awayTeamId: string, laneNo: number | null) =>
+  const saveTeam = (name: string, playerIds: string[]) =>
+    editingTeam && season
+      ? attempt(
+          () => updateTeam(editingTeam.id, season.id, name, playerIds),
+          `${name} 정보를 수정했어요`,
+        )
+      : Promise.resolve('수정할 팀을 찾지 못했습니다.');
+
+  const removeTeam = (team: Team) =>
+    attempt(() => deleteTeam(team.id), `${team.name}을 삭제했어요`);
+
+  const addMatch = (
+    homeTeamId: string,
+    awayTeamId: string,
+    laneNo: number | null,
+    playedOn: string | null,
+    startTime: string | null,
+  ) =>
     week
       ? attempt(
-          () => createMatch(week.id, homeTeamId, awayTeamId, laneNo),
+          () => createMatch(week.id, homeTeamId, awayTeamId, laneNo, playedOn, startTime),
           `${week.weekNo}주차 대진을 등록했어요`,
         )
       : Promise.resolve('주차를 먼저 선택해 주세요.');
 
-  const removeMatch = async (match: Match) => {
-    if (!window.confirm('이 대진을 삭제할까요?')) return;
-    const message = await attempt(() => deleteMatch(match.id), '대진을 삭제했어요');
-    if (message) onNotify(message);
-  };
+  const saveMatch = (
+    homeTeamId: string,
+    awayTeamId: string,
+    laneNo: number | null,
+    playedOn: string | null,
+    startTime: string | null,
+  ) =>
+    editingMatch
+      ? attempt(
+          () => updateMatch(editingMatch.id, homeTeamId, awayTeamId, laneNo, playedOn, startTime),
+          '대진을 수정했어요',
+        )
+      : Promise.resolve('수정할 대진을 찾지 못했습니다.');
+
+  const removeMatch = (match: Match) =>
+    attempt(() => deleteMatch(match.id), '대진을 삭제했어요');
 
   return (
     <>
@@ -191,14 +271,32 @@ export function LeagueScreen({ tab, isAdmin, onNotify }: Props) {
           }}
           onPickWeek={setWeekId}
           onCreateSeason={() => setSeasonSheet(true)}
+          onEditSeason={setEditingSeason}
           onCreateTeam={() => setTeamSheet(true)}
+          onEditTeam={setEditingTeam}
           onCreateMatch={() => setMatchSheet(true)}
-          onDeleteMatch={(m) => void removeMatch(m)}
+          onEditMatch={setEditingMatch}
           onRetry={() => void league.refresh()}
         />
       )}
 
-      {(tab === 'main' || tab === 'schedule') && <PlannedTab spec={PLANNED[tab]} />}
+      {tab === 'schedule' && (
+        <ScheduleTab
+          snapshot={snapshot}
+          state={league.state}
+          error={league.error}
+          season={season}
+          week={week}
+          onPickSeason={(id) => {
+            setSeasonId(id);
+            setWeekId(null);
+          }}
+          onPickWeek={setWeekId}
+          onRetry={() => void league.refresh()}
+        />
+      )}
+
+      {tab === 'main' && <PlannedTab spec={PLANNED.main} />}
 
       {addOpen && (
         <AddPlayersSheet
@@ -226,6 +324,17 @@ export function LeagueScreen({ tab, isAdmin, onNotify }: Props) {
         />
       )}
 
+      {editingSeason && (
+        <SeasonSheet
+          season={editingSeason}
+          usedEditions={snapshot.seasons.map((s) => s.edition)}
+          suggestedEdition={editingSeason.edition}
+          onSave={saveSeason}
+          onDelete={removeSeason}
+          onClose={() => setEditingSeason(null)}
+        />
+      )}
+
       {teamSheet && (
         <TeamSheet
           available={unassigned}
@@ -235,13 +344,42 @@ export function LeagueScreen({ tab, isAdmin, onNotify }: Props) {
         />
       )}
 
+      {editingTeam && (
+        <TeamSheet
+          team={editingTeam}
+          available={editablePool}
+          initialPlayerIds={editingMemberIds}
+          suggestedName={editingTeam.name}
+          onSave={saveTeam}
+          onDelete={removeTeam}
+          onClose={() => setEditingTeam(null)}
+        />
+      )}
+
       {matchSheet && week && (
         <MatchSheet
           weekNo={week.weekNo}
+          days={days}
           teams={seasonTeams}
           busyTeamIds={busyTeamIds}
           onSave={addMatch}
           onClose={() => setMatchSheet(false)}
+        />
+      )}
+
+      {editingMatch && week && (
+        <MatchSheet
+          match={editingMatch}
+          weekNo={week.weekNo}
+          days={days}
+          teams={seasonTeams}
+          // The fixture's own teams must stay selectable while editing it.
+          busyTeamIds={busyTeamIds.filter(
+            (id) => id !== editingMatch.homeTeamId && id !== editingMatch.awayTeamId,
+          )}
+          onSave={saveMatch}
+          onDelete={removeMatch}
+          onClose={() => setEditingMatch(null)}
         />
       )}
     </>

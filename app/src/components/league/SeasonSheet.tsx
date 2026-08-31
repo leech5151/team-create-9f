@@ -1,4 +1,6 @@
 import { useState } from 'react';
+import type { Season } from '../../league/api';
+import { formatDate, todayUtc } from '../../league/schedule';
 
 const MIN_WEEKS = 1;
 const MAX_WEEKS = 20;
@@ -6,17 +8,37 @@ const MAX_WEEKS = 20;
 const DEFAULT_WEEKS = 6;
 
 interface Props {
+  /** Present when editing an existing 회차; absent when creating one. */
+  season?: Season;
   /** Editions already taken, so the clash is caught before the round trip. */
   usedEditions: readonly number[];
   suggestedEdition: number;
-  onSave: (edition: number, totalWeeks: number, title: string | null) => Promise<string | null>;
+  onSave: (
+    edition: number,
+    totalWeeks: number,
+    title: string | null,
+    startDate: string,
+  ) => Promise<string | null>;
+  onDelete?: (season: Season) => Promise<string | null>;
   onClose: () => void;
 }
 
-export function SeasonSheet({ usedEditions, suggestedEdition, onSave, onClose }: Props) {
-  const [edition, setEdition] = useState(String(suggestedEdition));
-  const [weeks, setWeeks] = useState(String(DEFAULT_WEEKS));
-  const [title, setTitle] = useState('');
+export function SeasonSheet({
+  season,
+  usedEditions,
+  suggestedEdition,
+  onSave,
+  onDelete,
+  onClose,
+}: Props) {
+  const editing = season !== undefined;
+  const [edition, setEdition] = useState(String(season?.edition ?? suggestedEdition));
+  const [weeks, setWeeks] = useState(String(season?.totalWeeks ?? DEFAULT_WEEKS));
+  const [title, setTitle] = useState(season?.title ?? '');
+  // Defaults to today so the common case needs no typing.
+  const [startDate, setStartDate] = useState(
+    () => season?.startDate ?? formatDate(todayUtc()),
+  );
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -25,27 +47,65 @@ export function SeasonSheet({ usedEditions, suggestedEdition, onSave, onClose }:
   const submit = async () => {
     const ed = Number(edition);
     if (!edition || !Number.isInteger(ed) || ed < 1) return setError('회차는 1 이상이어야 합니다.');
-    if (usedEditions.includes(ed)) return setError(`${ed}회는 이미 있습니다.`);
+    // Keeping your own edition number is not a clash.
+    if (ed !== season?.edition && usedEditions.includes(ed)) {
+      return setError(`${ed}회는 이미 있습니다.`);
+    }
 
     const wk = Number(weeks);
     if (!Number.isInteger(wk) || wk < MIN_WEEKS || wk > MAX_WEEKS) {
       return setError(`주차는 ${MIN_WEEKS}~${MAX_WEEKS} 사이여야 합니다.`);
     }
 
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(startDate)) return setError('시작 날짜를 입력해 주세요.');
+
+    // Shrinking the season destroys the trailing weeks and their fixtures.
+    if (editing && season && wk < season.totalWeeks) {
+      const lost = season.totalWeeks - wk;
+      if (!window.confirm(`주차를 ${season.totalWeeks} → ${wk}로 줄이면 마지막 ${lost}개 주차와 그 대진이 삭제됩니다. 계속할까요?`)) {
+        return;
+      }
+    }
+
     setBusy(true);
     setError(null);
-    const message = await onSave(ed, wk, title.trim() || null);
+    const message = await onSave(ed, wk, title.trim() || null, startDate);
     setBusy(false);
     if (message) setError(message);
     else onClose();
   };
 
+  const remove = () => {
+    if (!season || !onDelete) return;
+    if (!window.confirm(`${season.edition}회를 삭제할까요?\n주차·팀·대진이 모두 지워집니다.`)) return;
+    void (async () => {
+      setBusy(true);
+      const message = await onDelete(season);
+      setBusy(false);
+      if (message) setError(message);
+      else onClose();
+    })();
+  };
+
   return (
-    <div className="sheetScrim" onClick={onClose} role="dialog" aria-modal="true" aria-label="회차 만들기">
+    <div className="sheetScrim" onClick={onClose} role="dialog" aria-modal="true" aria-label={editing ? '회차 수정' : '회차 만들기'}>
       <div className="sheet" onClick={(e) => e.stopPropagation()}>
-        <div className="sheet__title">회차 만들기</div>
+        <div className="sheet__title">{editing ? `${season!.edition}회 수정` : '회차 만들기'}</div>
         <div className="sheet__hint">
-          주차는 입력한 수만큼 자동으로 만들어집니다. 날짜는 나중에 지정할 수 있어요.
+          시작 날짜부터 7일씩 끊어 주차가 매겨집니다. 주차는 입력한 수만큼 자동 생성돼요.
+        </div>
+
+        <div className="field">
+          <label className="field__label" htmlFor="season-start">
+            시작 날짜 (1주차 시작일)
+          </label>
+          <input
+            id="season-start"
+            className="field__input"
+            type="date"
+            value={startDate}
+            onChange={(e) => setStartDate(e.target.value)}
+          />
         </div>
 
         <div className="field">
@@ -93,11 +153,17 @@ export function SeasonSheet({ usedEditions, suggestedEdition, onSave, onClose }:
 
         <div className="sheet__actions">
           <button type="button" className="sheet__save" onClick={() => void submit()} disabled={busy}>
-            {busy ? '만드는 중…' : '만들기'}
+            {busy ? '저장 중…' : editing ? '저장' : '만들기'}
           </button>
-          <button type="button" className="sheet__ghost" onClick={onClose}>
-            취소
-          </button>
+          {editing && onDelete ? (
+            <button type="button" className="sheet__ghost sheet__delete" onClick={remove} disabled={busy}>
+              삭제
+            </button>
+          ) : (
+            <button type="button" className="sheet__ghost" onClick={onClose}>
+              취소
+            </button>
+          )}
         </div>
       </div>
     </div>

@@ -383,6 +383,19 @@ export default function App() {
 
   const teams = state.section === 'teams';
   const league = state.section === 'league';
+
+  const visibleLeagueTabs = useMemo(
+    () => LEAGUE_TABS.filter((t) => !t.adminOnly || auth.isAdmin),
+    [auth.isAdmin],
+  );
+
+  /**
+   * Signing out while 경기설정 is open would leave a tab selected that no longer
+   * exists, so fall back to the first visible one.
+   */
+  const leagueTab = visibleLeagueTabs.some((t) => t.key === state.leagueTab)
+    ? state.leagueTab
+    : (visibleLeagueTabs[0]?.key ?? 'main');
   const boardMode = teams && state.screen === 'result' && state.resultView === 'board';
 
   // Keep the standalone status-bar tint in step with the surface behind it.
@@ -510,7 +523,7 @@ export default function App() {
         )}
 
         {league && (
-          <LeagueScreen tab={state.leagueTab} isAdmin={auth.isAdmin} onNotify={flash} />
+          <LeagueScreen tab={leagueTab} isAdmin={auth.isAdmin} onNotify={flash} />
         )}
       </div>
 
@@ -573,8 +586,8 @@ export default function App() {
       {league && (
         <div className="app__bottom">
           <TabBar
-            tabs={LEAGUE_TABS}
-            isActive={(key) => state.leagueTab === key}
+            tabs={visibleLeagueTabs}
+            isActive={(key) => leagueTab === key}
             onSelect={goLeagueTab}
           />
         </div>

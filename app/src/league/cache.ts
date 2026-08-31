@@ -26,12 +26,15 @@ export function readCache(): CachedSnapshot {
       !Array.isArray(s.seasons) ||
       !Array.isArray(s.players) ||
       !Array.isArray(s.teams) ||
-      !Array.isArray(s.entries)
+      !Array.isArray(s.entries) ||
+      !Array.isArray(s.weeks) ||
+      !Array.isArray(s.matches)
     ) {
       return { snapshot: EMPTY_SNAPSHOT, fetchedAt: null };
     }
+    // `scores` was added later; an older cache entry simply has none.
     return {
-      snapshot: s as LeagueSnapshot,
+      snapshot: { ...s, scores: Array.isArray(s.scores) ? s.scores : [] } as LeagueSnapshot,
       fetchedAt: typeof parsed.fetchedAt === 'number' ? parsed.fetchedAt : null,
     };
   } catch {
