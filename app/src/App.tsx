@@ -9,7 +9,15 @@ import { useInstallPrompt } from './hooks/useInstallPrompt';
 import { useAdminAuth } from './league/useAdminAuth';
 import { LoginSheet } from './components/LoginSheet';
 import { useRoll } from './hooks/useRoll';
-import { buildLanes, buildQueue, hydrateLanes, laneCountFor, tierMap } from './lib/assign';
+import {
+  buildLanes,
+  buildQueue,
+  hydrateLanes,
+  laneCountFor,
+  laneSizes,
+  minLaneCount,
+  tierMap,
+} from './lib/assign';
 import { shareText } from './lib/format';
 import { clearState, initialState, loadState, saveState, type PersistedState } from './lib/storage';
 import { HistoryScreen } from './screens/HistoryScreen';
@@ -108,7 +116,14 @@ export default function App() {
     return map;
   }, [lanes]);
 
-  const plannedLaneCount = laneCountFor(attending);
+  /** Lanes the next draw will use: the operator's choice, or the automatic fit. */
+  const autoLaneCount = laneCountFor(attending);
+  const chosenLaneCount = state.laneCount;
+  const plannedLaneCount =
+    chosenLaneCount !== null && laneSizes(attending.length, chosenLaneCount).length > 0
+      ? chosenLaneCount
+      : autoLaneCount;
+  const plannedSizes = laneSizes(attending.length, plannedLaneCount);
   const placedSet = useMemo(() => new Set(state.placed), [state.placed]);
   const waiting = useMemo<Ranked[]>(
     () =>
@@ -228,7 +243,11 @@ export default function App() {
     roll.reset();
     setState((s) => {
       const att = s.roster.filter((m) => s.attend[m.id]);
-      const built = buildLanes(att, s.opts, s.history);
+      const lanes =
+        s.laneCount !== null && laneSizes(att.length, s.laneCount).length > 0
+          ? s.laneCount
+          : laneCountFor(att);
+      const built = buildLanes(att, s.opts, s.history, lanes);
       return {
         ...s,
         game: bumpGame ? s.game + 1 : s.game,
@@ -476,6 +495,11 @@ export default function App() {
             opts={state.opts}
             attendCount={attending.length}
             laneCount={plannedLaneCount}
+            laneSizes={plannedSizes}
+            minLaneCount={minLaneCount(attending.length)}
+            autoLaneCount={autoLaneCount}
+            laneCountChosen={chosenLaneCount !== null}
+            onChangeLaneCount={(n) => setState((s) => ({ ...s, laneCount: n }))}
             editMode={editMode}
             onToggleEditMode={() => setEditMode((v) => !v)}
             onToggleAttend={toggleAttend}

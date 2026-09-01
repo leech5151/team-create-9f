@@ -24,19 +24,67 @@ export function laneAverage(members: readonly Member[]): number {
   return Math.round(members.reduce((s, m) => s + m.avg, 0) / members.length);
 }
 
+/** Hard ceiling per lane — a lane never holds four. */
+export const MAX_PER_LANE = 3;
+/** Lanes are booked in pairs; one table is two adjacent lanes. */
+export const LANES_PER_TABLE = 2;
+
+/** Fewest lanes that can seat everyone at three per lane. */
+export function minLaneCount(count: number): number {
+  return count === 0 ? 0 : Math.ceil(count / MAX_PER_LANE);
+}
+
+/** Nobody bowls alone; a lane worth opening seats at least this many. */
+const MIN_PER_LANE = 2;
+
 /**
- * Each lane holds at most three players, and the draw must always use an even
- * number of lanes so tables remain paired as 2-lane units.
- *
- * Examples: 20 people => 8 lanes, 10 people => 4 lanes, 6 people => 2 lanes.
+ * Default lane count: the fewest that seat everyone at three per lane, rounded
+ * up to a whole table — but only when the extra lane still leaves every lane
+ * with at least two players. Spreading a small group across an empty-ish extra
+ * lane is worse than leaving one table half-booked.
  */
 export function laneCountFor(attending: readonly Member[]): number {
-  const n = attending.length;
-  if (n === 0) return 0;
+  const count = attending.length;
+  const need = minLaneCount(count);
+  if (need === 0) return 0;
 
-  const needed = Math.ceil(n / 3);
-  const even = needed % 2 === 0 ? needed : needed + 1;
-  return Math.max(2, even);
+  const rounded = Math.ceil(need / LANES_PER_TABLE) * LANES_PER_TABLE;
+  return rounded * MIN_PER_LANE <= count ? rounded : need;
+}
+
+/**
+ * How many players go in each lane.
+ *
+ * Sizes differ by at most one, and the extras are dealt one per table before
+ * any table gets a second — so 20 people over 8 lanes comes out 2,3,2,3,2,3,2,3
+ * and every table seats five. Within a table the larger lane comes second,
+ * which is what produces that alternating read.
+ *
+ * Returns an empty array when the lanes cannot seat everyone at three each.
+ */
+export function laneSizes(count: number, laneCount: number): number[] {
+  if (laneCount <= 0 || count <= 0) return [];
+  if (laneCount * MAX_PER_LANE < count) return [];
+
+  // More lanes than players would leave a lane empty; open only what is used.
+  const lanes = Math.min(laneCount, count);
+
+  const base = Math.floor(count / lanes);
+  let extras = count % lanes;
+  const sizes = Array.from({ length: lanes }, () => base);
+
+  const tables = Math.ceil(lanes / LANES_PER_TABLE);
+  // Second lane of each table first, then the first lane — one pass per offset.
+  for (let offset = LANES_PER_TABLE - 1; offset >= 0 && extras > 0; offset--) {
+    for (let t = 0; t < tables && extras > 0; t++) {
+      const lane = t * LANES_PER_TABLE + offset;
+      if (lane >= lanes) continue;
+      if (sizes[lane]! >= MAX_PER_LANE) continue;
+      sizes[lane]! += 1;
+      extras -= 1;
+    }
+  }
+  return sizes;
 }
 
 /** Highest average first; name then id break ties so the order is stable. */
@@ -44,23 +92,54 @@ const byStrength = (a: Member, b: Member) =>
   b.avg - a.avg || a.name.localeCompare(b.name, 'ko') || a.id.localeCompare(b.id);
 
 /**
- * Splits the attending group into three tiers by average, in proportion to the
- * group size. Tiers 1 and 2 take one player per lane; tier 3 absorbs the
- * remainder, whose extras become fourth members during `buildLanes`.
+ * Splits the attending group into three tiers by average, in equal proportion.
+ *
+ * Tiers are a view of relative strength, so they hold their shape as the roster
+ * changes: dropping one player re-cuts all three bands rather than shrinking
+ * only the last. Any remainder goes to the stronger tiers first.
+ *
+ * This is deliberately independent of the seating plan — how many lanes are
+ * booked decides the *dealing* order (see `draftBands`), not who counts as a
+ * 1티어 player.
  */
 export function assignTiers(attending: readonly Member[]): Ranked[] {
   const n = attending.length;
   if (n === 0) return [];
 
-  const laneCount = laneCountFor(attending);
-  const size1 = Math.min(laneCount, n);
-  const size2 = Math.min(laneCount, n - size1);
+  const base = Math.floor(n / 3);
+  const remainder = n % 3;
+  const bands = [0, 1, 2].map((i) => base + (i < remainder ? 1 : 0));
 
   const sorted = attending.slice().sort(byStrength);
-  return sorted.map((m, i) => ({
-    ...m,
-    tier: (i < size1 ? 1 : i < size1 + size2 ? 2 : 3) as Tier,
-  }));
+  const ranked: Ranked[] = [];
+  let cursor = 0;
+  for (const [index, size] of bands.entries()) {
+    const tier = (index + 1) as Tier;
+    for (let i = 0; i < size && cursor < sorted.length; i++, cursor++) {
+      ranked.push({ ...sorted[cursor]!, tier });
+    }
+  }
+  return ranked;
+}
+
+/**
+ * Dealing order for lane construction: one round per seat.
+ *
+ * Round 1 takes the strongest players — one for every lane. Round 2 the next,
+ * and round 3 only enough for the lanes that seat three. Balance comes from
+ * this rank-based dealing, which is why it follows `laneSizes` instead of the
+ * proportional tiers above.
+ */
+function draftBands(attending: readonly Member[], sizes: readonly number[]): Member[][] {
+  const sorted = attending.slice().sort(byStrength);
+  const bands: Member[][] = [];
+  let cursor = 0;
+  for (const round of [1, 2, 3]) {
+    const seats = sizes.filter((size) => size >= round).length;
+    bands.push(sorted.slice(cursor, cursor + seats));
+    cursor += seats;
+  }
+  return bands;
 }
 
 /** Convenience lookup for screens that render one member at a time. */
@@ -84,6 +163,19 @@ function pastPairs(history: readonly HistoryEntry[]): Set<string> {
 }
 
 /** Lower is better. Each enabled option contributes an independently weighted penalty. */
+/** Sum of a table's two lanes; a trailing odd lane forms a table of its own. */
+function tableTotals(lanes: readonly Ranked[][]): number[] {
+  const totals: number[] = [];
+  for (let i = 0; i < lanes.length; i += LANES_PER_TABLE) {
+    let sum = 0;
+    for (let j = i; j < Math.min(i + LANES_PER_TABLE, lanes.length); j++) {
+      sum += lanes[j]!.reduce((acc, m) => acc + m.avg, 0);
+    }
+    totals.push(sum);
+  }
+  return totals;
+}
+
 function scoreLanes(
   lanes: readonly Ranked[][],
   attending: readonly Member[],
@@ -93,8 +185,10 @@ function scoreLanes(
   let score = 0;
 
   if (opts.balance) {
-    const avgs = lanes.map((l) => l.reduce((s, m) => s + m.avg, 0) / l.length);
+    const avgs = lanes.filter((l) => l.length > 0).map((l) => l.reduce((s, m) => s + m.avg, 0) / l.length);
     score += stddev(avgs) * 3;
+    // Two lanes make a table, and people compare tables — so even them out too.
+    score += stddev(tableTotals(lanes)) * 0.5;
   }
 
   if (opts.avoid) {
@@ -120,22 +214,30 @@ function scoreLanes(
 
 const ITERATIONS = 300;
 
-/** One candidate arrangement: a shuffle of each tier read across into lanes. */
-function layout(ranked: readonly Ranked[], laneCount: number): Ranked[][] {
-  const columns: Ranked[][] = [1, 2, 3].map((t) => shuffle(ranked.filter((m) => m.tier === t)));
-  const lanes: Ranked[][] = [];
-  for (let row = 0; row < laneCount; row++) {
-    lanes.push(columns.map((c) => c[row]).filter((m): m is Ranked => m !== undefined));
-  }
+/**
+ * One candidate arrangement: each dealing round shuffled, then handed out to
+ * the lanes that still have a seat for it.
+ *
+ * Lanes that seat three are the only ones reached by round 3, so no lane ever
+ * exceeds `MAX_PER_LANE` and none is left short.
+ */
+function layout(
+  bands: readonly Member[][],
+  sizes: readonly number[],
+  tierOf: ReadonlyMap<string, Tier>,
+): Ranked[][] {
+  const lanes: Ranked[][] = sizes.map(() => []);
 
-  // Tier 3 carries the remainder; those extras become fourth members, spread
-  // across lanes so nobody ends up bowling alone. Very small groups can have
-  // more extras than lanes (5 people = 1 lane, 2 extras), so cycle rather than
-  // assuming one extra per lane.
-  const extras = columns[2]!.slice(laneCount);
-  if (extras.length > 0) {
-    const order = shuffle(lanes.map((_, i) => i));
-    extras.forEach((m, i) => lanes[order[i % order.length]!]!.push(m));
+  for (const [index, band] of bands.entries()) {
+    const round = index + 1;
+    // Randomise which qualifying lane gets which player, but keep the round.
+    const eligible = shuffle(
+      sizes.map((size, lane) => ({ size, lane })).filter((l) => l.size >= round),
+    );
+    shuffle(band).forEach((member, i) => {
+      const target = eligible[i];
+      if (target) lanes[target.lane]!.push({ ...member, tier: tierOf.get(member.id) ?? 3 });
+    });
   }
   return lanes;
 }
@@ -150,17 +252,25 @@ export function buildLanes(
   attending: readonly Member[],
   opts: Options,
   history: readonly HistoryEntry[],
+  laneCount?: number,
 ): Lane[] {
-  const laneCount = laneCountFor(attending);
-  if (laneCount === 0) return [];
+  if (attending.length === 0) return [];
 
-  const ranked = assignTiers(attending);
+  const requested = laneCount ?? laneCountFor(attending);
+  const sizes =
+    laneSizes(attending.length, requested).length > 0
+      ? laneSizes(attending.length, requested)
+      : laneSizes(attending.length, minLaneCount(attending.length));
+  if (sizes.length === 0) return [];
+
+  const tierOf = tierMap(attending);
+  const bands = draftBands(attending, sizes);
   const past = opts.avoid ? pastPairs(history) : new Set<string>();
   const tries = opts.balance || opts.avoid || opts.gender ? ITERATIONS : 1;
 
   let best: { score: number; lanes: Ranked[][] } | null = null;
   for (let attempt = 0; attempt < tries; attempt++) {
-    const lanes = layout(ranked, laneCount);
+    const lanes = layout(bands, sizes, tierOf);
     const score = scoreLanes(lanes, attending, opts, past);
     if (!best || score < best.score) best = { score, lanes };
   }

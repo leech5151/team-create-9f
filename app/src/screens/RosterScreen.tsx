@@ -17,6 +17,12 @@ interface Props {
   opts: Options;
   attendCount: number;
   laneCount: number;
+  /** Players per lane for the planned draw, e.g. [2,3,2,3]. */
+  laneSizes: readonly number[];
+  minLaneCount: number;
+  autoLaneCount: number;
+  laneCountChosen: boolean;
+  onChangeLaneCount: (laneCount: number | null) => void;
   editMode: boolean;
   onToggleEditMode: () => void;
   onToggleAttend: (id: string) => void;
@@ -38,6 +44,11 @@ export function RosterScreen({
   opts,
   attendCount,
   laneCount,
+  laneSizes,
+  minLaneCount,
+  autoLaneCount,
+  laneCountChosen,
+  onChangeLaneCount,
   editMode,
   onToggleEditMode,
   onToggleAttend,
@@ -164,9 +175,55 @@ export function RosterScreen({
           </div>
         </div>
 
-        {attendCount > 0 && attendCount % 3 !== 0 && (
-          <div className="notice">
-            참석 인원이 3의 배수가 아니라, 남는 {attendCount % 3}명은 4인 레인으로 묶입니다.
+        {attendCount > 0 && (
+          <div className="lanePlan">
+            <div className="lanePlan__head">
+              <span className="lanePlan__label">레인 수</span>
+              <div className="lanePlan__stepper">
+                <button
+                  type="button"
+                  className="lanePlan__btn"
+                  onClick={() => onChangeLaneCount(Math.max(minLaneCount, laneCount - 1))}
+                  disabled={laneCount <= minLaneCount}
+                  aria-label="레인 줄이기"
+                >
+                  −
+                </button>
+                <span className="lanePlan__value">{laneCount}</span>
+                <button
+                  type="button"
+                  className="lanePlan__btn"
+                  onClick={() => onChangeLaneCount(Math.min(attendCount, laneCount + 1))}
+                  disabled={laneCount >= attendCount}
+                  aria-label="레인 늘리기"
+                >
+                  +
+                </button>
+              </div>
+              {laneCountChosen && laneCount !== autoLaneCount && (
+                <button
+                  type="button"
+                  className="lanePlan__auto"
+                  onClick={() => onChangeLaneCount(null)}
+                >
+                  자동({autoLaneCount})
+                </button>
+              )}
+            </div>
+            <div className="lanePlan__sizes">
+              {laneSizes.map((size, i) => (
+                <span
+                  key={i}
+                  className={`lanePlan__lane${i % 2 === 1 ? ' lanePlan__lane--pair' : ''}`}
+                >
+                  {size}
+                </span>
+              ))}
+            </div>
+            <div className="lanePlan__note">
+              레인당 최대 3명 · 2레인이 한 테이블
+              {laneSizes.length % 2 === 1 && ' · 마지막 테이블은 1레인'}
+            </div>
           </div>
         )}
 

@@ -795,6 +795,107 @@ input {
   flex: none;
 }
 
+/* ── Lane plan (팀짜기 레인 수 지정) ────────────────────────── */
+
+.lanePlan {
+  margin-top: 10px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: #fff;
+  border: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+.lanePlan__head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.lanePlan__label {
+  font-size: 11px;
+  font-weight: 800;
+  color: #8a8f98;
+}
+
+.lanePlan__stepper {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  margin-left: auto;
+}
+
+.lanePlan__btn {
+  width: 30px;
+  height: 30px;
+  border-radius: 9px;
+  background: #f1f0ec;
+  font-size: 16px;
+  font-weight: 800;
+  color: #14161a;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.lanePlan__btn:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.lanePlan__value {
+  min-width: 34px;
+  text-align: center;
+  font-size: 17px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.lanePlan__auto {
+  flex: none;
+  padding: 5px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  background: #fff;
+  font-size: 10.5px;
+  font-weight: 800;
+  color: #6b6f76;
+}
+
+/* Alternating tint groups the lanes into their two-lane tables. */
+.lanePlan__sizes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 10px;
+}
+
+.lanePlan__lane {
+  width: 26px;
+  height: 26px;
+  border-radius: 8px;
+  background: #f1f0ec;
+  color: #4a4f57;
+  font-size: 12px;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-variant-numeric: tabular-nums;
+}
+
+.lanePlan__lane--pair {
+  background: #14161a;
+  color: #fff;
+  margin-right: 6px;
+}
+
+.lanePlan__note {
+  margin-top: 8px;
+  font-size: 10.5px;
+  font-weight: 700;
+  color: #a8adb4;
+}
+
 /* Empty roster — the first thing a new user sees. */
 .blank {
   margin-top: 22px;

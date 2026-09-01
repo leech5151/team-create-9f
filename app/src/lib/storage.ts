@@ -22,6 +22,8 @@ export interface PersistedState {
   screen: Screen;
   /** Active tab inside 상주리그. */
   leagueTab: LeagueTab;
+  /** Operator-chosen lane count for 팀짜기; null follows the attendance. */
+  laneCount: number | null;
   /** Current draw's lanes as member ids, so roster edits reconcile on load. */
   laneIds: string[][];
   queue: string[];
@@ -40,6 +42,7 @@ export function initialState(): PersistedState {
     section: 'home',
     screen: 'roster',
     leagueTab: 'main',
+    laneCount: null,
     laneIds: [],
     queue: [],
     placed: [],
@@ -135,6 +138,8 @@ export function loadState(): PersistedState {
     game: typeof s.game === 'number' && s.game >= 1 ? Math.floor(s.game) : 1,
     section: s.section === 'teams' || s.section === 'league' ? s.section : 'home',
     leagueTab: isLeagueTab(s.leagueTab) ? s.leagueTab : 'main',
+    laneCount:
+      typeof s.laneCount === 'number' && s.laneCount >= 1 ? Math.floor(s.laneCount) : null,
     // A draw screen with no lanes has nothing to show — send it back to 명단.
     screen: laneIds.length === 0 && (screen === 'draw' || screen === 'result') ? 'roster' : screen,
     laneIds,
