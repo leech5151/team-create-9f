@@ -11,7 +11,6 @@ interface Props {
   state: LoadState;
   error: string | null;
   season: Season | null;
-  onPickSeason: (id: string) => void;
   onRetry: () => void;
 }
 
@@ -19,8 +18,8 @@ interface Props {
  * 리그 메인 — the standings dashboard: who leads, and what the last played week
  * changed. Read-only for everyone.
  */
-export function MainTab({ snapshot, state, error, season, onPickSeason, onRetry }: Props) {
-  const { seasons, entries, players } = snapshot;
+export function MainTab({ snapshot, state, error, season, onRetry }: Props) {
+  const { entries, players } = snapshot;
   const board = season ? dashboard(snapshot, season.id) : null;
 
   const playerById = new Map(players.map((p) => [p.id, p] as const));
@@ -79,25 +78,6 @@ export function MainTab({ snapshot, state, error, season, onPickSeason, onRetry 
           <button type="button" className="notice__action" onClick={onRetry}>
             다시 시도
           </button>
-        </div>
-      )}
-
-      {seasons.length > 1 && (
-        <div className="pickRow">
-          <span className="pickRow__label">회차</span>
-          <div className="pickRow__chips">
-            {seasons.map((s) => (
-              <button
-                type="button"
-                key={s.id}
-                className={`chip${season.id === s.id ? ' chip--on' : ''}`}
-                onClick={() => onPickSeason(s.id)}
-              >
-                {s.edition}회
-                {s.isActive && <span className="chip__now">현재</span>}
-              </button>
-            ))}
-          </div>
         </div>
       )}
 

@@ -2,7 +2,9 @@ import { useState } from 'react';
 import type { LeagueSnapshot, Match, Season, Week } from '../../league/api';
 import type { LeaguePlayer } from '../../league/types';
 import type { LoadState } from '../../league/useLeague';
+import { TeamAdjust } from '../../components/league/TeamAdjust';
 import { orderRoster, teamScore, TIER_META, type TeamScore } from '../../league/tiers';
+import { fixtureHandicaps } from '../../league/scoring';
 import type { TieredPlayer } from '../../league/tiers';
 import {
   isCurrentWeek,
@@ -27,10 +29,8 @@ interface Props {
   isAdmin: boolean;
   season: Season | null;
   week: Week | null;
-  onPickSeason: (id: string) => void;
   onPickWeek: (id: string) => void;
   onCreateSeason: () => void;
-  onEditSeason: (season: Season) => void;
   /** Sends the operator to the 팀짜기 tab, which now owns team composition. */
   onGoDraw: () => void;
   onCreateMatch: () => void;
@@ -51,10 +51,8 @@ export function PlayTab({
   isAdmin,
   season,
   week,
-  onPickSeason,
   onPickWeek,
   onCreateSeason,
-  onEditSeason,
   onGoDraw,
   onCreateMatch,
   onLineupMatch,
@@ -110,6 +108,12 @@ export function PlayTab({
   /** Completed results, so a played fixture can show 승리/패배. */
   const results = season ? resultByMatch(snapshot, season.id) : new Map();
 
+  /** 점수 합으로 정해지는 대진 핸디캡을 양 팀에 나눠준다. */
+  const fixtureExtra = (m: Match) => {
+    const sum = (r: readonly LeaguePlayer[]) => r.reduce((t, p) => t + (p.avg ?? 0), 0);
+    return fixtureHandicaps(sum(rosterOf(m.homeTeamId, m.id)), sum(rosterOf(m.awayTeamId, m.id)));
+  };
+
   /** How many players are named in a fixture's line-up. */
   const lineupCount = (matchId: string) =>
     snapshot.lineups.filter((l) => l.matchId === matchId).length;
@@ -150,37 +154,6 @@ export function PlayTab({
         </div>
       ) : (
         <>
-          <div className="pickRow">
-            <span className="pickRow__label">회차</span>
-            <div className="pickRow__chips">
-              {seasons.map((s) => (
-                <button
-                  type="button"
-                  key={s.id}
-                  className={`chip${season?.id === s.id ? ' chip--on' : ''}`}
-                  onClick={() => onPickSeason(s.id)}
-                >
-                  {s.edition}회
-                  {s.isActive && <span className="chip__now">현재</span>}
-                </button>
-              ))}
-              {isAdmin && season && (
-                <button
-                  type="button"
-                  className="chip chip--ghost"
-                  onClick={() => onEditSeason(season)}
-                >
-                  ⚙ {season.edition}회 설정
-                </button>
-              )}
-              {isAdmin && (
-                <button type="button" className="chip chip--ghost" onClick={onCreateSeason}>
-                  + 회차
-                </button>
-              )}
-            </div>
-          </div>
-
           {seasonWeeks.length > 0 && (
             <div className="pickRow">
               <span className="pickRow__label">주차</span>
@@ -242,22 +215,11 @@ export function PlayTab({
           {season && !season.startDate && (
             <div className="notice">
               시작 날짜가 없어 주차가 며칠부터인지 계산할 수 없습니다.
-              {isAdmin ? (
-                <>
-                  <div className="notice__detail">
-                    회차 설정에서 1주차 시작일을 정하면 주차 날짜와 요일이 매겨집니다.
-                  </div>
-                  <button
-                    type="button"
-                    className="notice__action"
-                    onClick={() => onEditSeason(season)}
-                  >
-                    시작 날짜 설정
-                  </button>
-                </>
-              ) : (
-                <div className="notice__detail">운영자가 시작 날짜를 정하면 표시됩니다.</div>
-              )}
+              <div className="notice__detail">
+                {isAdmin
+                  ? '위 회차 줄의 ⚙ 설정에서 1주차 시작일을 정하면 주차 날짜와 요일이 매겨집니다.'
+                  : '운영자가 시작 날짜를 정하면 표시됩니다.'}
+              </div>
             </div>
           )}
 
@@ -373,6 +335,7 @@ export function PlayTab({
                           roster={rosterOf(m.homeTeamId, m.id)}
                           outcome={results.has(m.id) ? outcomeFor(results.get(m.id)!, true) : null}
                           points={results.has(m.id) ? pointsFor(results.get(m.id)!, true) : null}
+                          fixtureHandicap={fixtureExtra(m).home}
                         />
                         <div className="fixture__vs">VS</div>
                         <FixtureSide
@@ -380,6 +343,7 @@ export function PlayTab({
                           roster={rosterOf(m.awayTeamId, m.id)}
                           outcome={results.has(m.id) ? outcomeFor(results.get(m.id)!, false) : null}
                           points={results.has(m.id) ? pointsFor(results.get(m.id)!, false) : null}
+                          fixtureHandicap={fixtureExtra(m).away}
                         />
                       </div>
                     </div>
@@ -395,18 +359,16 @@ export function PlayTab({
   );
 }
 
+/**
+ * The line-up's raw 점수 total. The handicap and penalty used to sit beside it
+ * in parentheses, but `TeamAdjust` prints the same figures directly below —
+ * so this stays the scratch number only.
+ */
 function TotalLine({ score }: { score: TeamScore }) {
   const partial = score.scored < score.size;
   return (
-    <div className="totalLine" title="팀 원점수 합계 (핸디 · 패널티)">
+    <div className="totalLine" title="팀 원점수 합계">
       <span className="totalLine__base">{score.scored === 0 ? '–' : score.base}</span>
-      {(score.handicap > 0 || score.penalty > 0) && (
-        <span className="totalLine__adj">
-          (
-          {score.handicap > 0 && <em className="totalLine__h">+{score.handicap}</em>}
-          {score.penalty > 0 && <em className="totalLine__p">−{score.penalty}</em>})
-        </span>
-      )}
       {partial && score.scored > 0 && (
         <span className="totalLine__warn">{score.size - score.scored}명 점수 없음</span>
       )}
@@ -414,12 +376,13 @@ function TotalLine({ score }: { score: TeamScore }) {
   );
 }
 
-function FixtureSide({ name, roster, outcome, points }: {
+function FixtureSide({ name, roster, outcome, points, fixtureHandicap }: {
   name: string;
   roster: readonly TieredPlayer[];
   /** null until both sides' scores are in. */
   outcome: Outcome | null;
   points: string | null;
+  fixtureHandicap: number;
 }) {
   return (
     <div className="fixture__side">
@@ -433,6 +396,7 @@ function FixtureSide({ name, roster, outcome, points }: {
         )}
       </div>
       <TotalLine score={teamScore(roster)} />
+      <TeamAdjust roster={roster} fixtureHandicap={fixtureHandicap} />
       <div className="fixture__players">
         {roster.length === 0 ? (
           <span className="fixture__empty">선수 미배정</span>

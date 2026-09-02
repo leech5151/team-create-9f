@@ -24,8 +24,21 @@ interface Props {
 export function PlayersTab({ snapshot, state, error, isAdmin, onAdd, onEdit, onRetry }: Props) {
   const { players } = snapshot;
   // Appearances are per 회차; the newest season is the one people ask about.
-  const activeSeason = snapshot.seasons[0] ?? null;
+  // The current 회차 decides which team badge and appearance count to show.
+  const activeSeason =
+    snapshot.seasons.find((se) => se.isActive) ?? snapshot.seasons[0] ?? null;
   const played = activeSeason ? appearances(snapshot, activeSeason.id) : new Map<string, number>();
+
+  /** playerId → team name for the current 회차; absent until a team is set. */
+  const teamOf = new Map<string, string>();
+  if (activeSeason) {
+    const nameById = new Map(snapshot.teams.map((t) => [t.id, t.name] as const));
+    for (const e of snapshot.entries) {
+      if (e.seasonId !== activeSeason.id || e.teamId === null) continue;
+      const name = nameById.get(e.teamId);
+      if (name) teamOf.set(e.playerId, name);
+    }
+  }
   const { tiers, unranked } = groupByTier(players);
   const ranked = players.length - unranked.length;
   const stats = scoreStats(players);
@@ -45,6 +58,13 @@ export function PlayersTab({ snapshot, state, error, isAdmin, onAdd, onEdit, onR
         <div className="memberRow__caps" title="출전 경기 수">
           {played.get(p.id) ?? 0}
           <em>경기</em>
+        </div>
+        <div className="memberRow__team">
+          {teamOf.has(p.id) ? (
+            <span className="teamBadge">{teamOf.get(p.id)}</span>
+          ) : (
+            <span className="teamBadge teamBadge--none">–</span>
+          )}
         </div>
         {isAdmin && <div className="memberRow__edit">수정</div>}
       </button>
@@ -93,10 +113,15 @@ export function PlayersTab({ snapshot, state, error, isAdmin, onAdd, onEdit, onR
       )}
 
       {stats && (
-        <div className="statRow">
+        <div className="statRow statRow--three">
           <div className="stat">
             <div className="stat__k">평균 점수</div>
             <div className="stat__v stat__v--num">{stats.mean}</div>
+          </div>
+          <div className="stat">
+            <div className="stat__k">예상 출전 총점</div>
+            {/* One night is three games, so the average scales by three. */}
+            <div className="stat__v stat__v--num">{stats.mean * 3}</div>
           </div>
           <div className="stat">
             <div className="stat__k">점수 범위</div>
@@ -120,7 +145,8 @@ export function PlayersTab({ snapshot, state, error, isAdmin, onAdd, onEdit, onR
             ))}
           </div>
           <div className="hintBox hintBox--tight">
-점수 순으로 상위 30% 골드 · 40% 실버 · 30% 브론즈 (핸디는 티어에 반영하지 않음)
+            점수 순으로 상위 30% 골드 · 40% 실버 · 30% 브론즈 (핸디는 티어에 반영하지 않음)
+            {activeSeason && ` · 출전·팀은 ${activeSeason.edition}회 기준`}
           </div>
         </>
       )}

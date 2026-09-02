@@ -754,6 +754,7 @@ input {
 
 .memberRow__name {
   flex: 1;
+  min-width: 0;
   font-size: 15px;
   font-weight: 700;
   letter-spacing: -0.01em;
@@ -776,14 +777,41 @@ input {
   color: #4a4f57;
 }
 
+/* Fixed widths keep the columns lined up down the list. */
 .memberRow__caps {
   flex: none;
-  min-width: 34px;
+  width: 40px;
   text-align: right;
   font-size: 12px;
   font-weight: 800;
   color: #4a4f57;
   font-variant-numeric: tabular-nums;
+}
+
+.memberRow__team {
+  flex: none;
+  width: 38px;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.teamBadge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 32px;
+  padding: 3px 6px;
+  border-radius: 7px;
+  background: #14161a;
+  color: #fff;
+  font-size: 10.5px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.teamBadge--none {
+  background: transparent;
+  color: #c2c6cc;
 }
 
 .memberRow__caps em {
@@ -1159,6 +1187,20 @@ input {
   margin-top: 8px;
 }
 
+/* Three cards in one row need tighter padding and a non-wrapping label. */
+.statRow--three .stat {
+  padding: 10px 8px;
+}
+
+.statRow--three .stat__k {
+  font-size: 10px;
+  white-space: nowrap;
+}
+
+.statRow--three .stat__v {
+  font-size: 17px;
+}
+
 /* ── League: score with its working — 182 (+12) ─────────────── */
 
 /* Fixed two-column grid: the score and the parenthetical each keep their own
@@ -1232,6 +1274,38 @@ input {
     gap: 18px;
     align-items: start;
   }
+}
+
+/* ── Season bar — one picker above every league tab ────────── */
+
+.seasonBar {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 0 var(--gutter);
+  margin-bottom: 10px;
+}
+
+.seasonBar__label {
+  flex: none;
+  font-size: 11px;
+  font-weight: 800;
+  color: #8a8f98;
+}
+
+.seasonBar__chips {
+  flex: 1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  min-width: 0;
+}
+
+/* Six tabs at phone width need a smaller label to stay on one line. */
+.tabs--many .tab {
+  font-size: 10.5px;
+  padding: 10px 0;
+  letter-spacing: -0.03em;
 }
 
 /* ── Switch row ────────────────────────────────────────────── */
@@ -1627,6 +1701,37 @@ input {
   letter-spacing: 0.06em;
 }
 
+/* Team-level adjustment summary on a fixture card. */
+.teamAdjust {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 5px;
+  margin-top: 5px;
+  font-size: 10.5px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.teamAdjust__h {
+  color: #0e9d8b;
+}
+
+.teamAdjust__p {
+  color: #c93a16;
+}
+
+.teamAdjust__f {
+  color: #1f5fe0;
+}
+
+.teamAdjust__net {
+  padding: 1px 6px;
+  border-radius: 6px;
+  background: #f1f0ec;
+  color: #14161a;
+}
+
 /* ── League: score entry grid ──────────────────────────────── */
 
 .fixture__actions {
@@ -1648,6 +1753,15 @@ input {
   font-style: normal;
   font-size: 9px;
   font-weight: 800;
+}
+
+/* "기록 전" is a state note, not a count — it should not read as a tally. */
+.fixture__badge--muted {
+  background: transparent;
+  padding: 0;
+  margin-left: 5px;
+  opacity: 0.62;
+  font-weight: 700;
 }
 
 .scoreTeam {
@@ -1742,6 +1856,44 @@ input {
   border-color: #ff4a21;
 }
 
+.scoreGrid__row--sum {
+  margin-top: 3px;
+  padding-top: 6px;
+  border-top: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.scoreGrid__row--applied {
+  margin-top: 1px;
+}
+
+/* The as-bowled row is reference; the applied row below it is the verdict. */
+.scoreGrid__gsum--raw,
+.scoreGrid__sum--raw {
+  color: #8e959e;
+  font-weight: 700;
+}
+
+.scoreGrid__cell {
+  min-height: 34px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: 8px;
+  background: #f7f6f3;
+  font-size: 13px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.scoreGrid__gsum {
+  font-size: 13px;
+  font-weight: 800;
+  color: #14161a;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
 .scoreGrid__sum {
   font-size: 13px;
   font-weight: 800;
@@ -1782,6 +1934,9 @@ input {
 }
 
 .scorePreview__game {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
   padding: 4px 8px;
   border-radius: 8px;
   background: rgba(255, 255, 255, 0.09);
@@ -1795,6 +1950,45 @@ input {
   margin-left: 4px;
   color: #ff7a5c;
   font-weight: 800;
+}
+
+.scorePreview__gameNo {
+  font-weight: 800;
+  color: #8e959e;
+}
+
+.scorePreview__gameScore {
+  font-variant-numeric: tabular-nums;
+  font-weight: 800;
+}
+
+/*
+ * The winning team, named outright. Sits on the dark preview panel, so the
+ * selectors match `.scorePreview__game em`'s specificity to win the colour.
+ */
+.scorePreview__game em.winner {
+  margin-left: 5px;
+  padding: 1px 6px;
+  border-radius: 6px;
+  font-size: 10.5px;
+  font-weight: 800;
+  font-style: normal;
+  white-space: nowrap;
+}
+
+.scorePreview__game em.winner--home {
+  background: rgba(120, 176, 255, 0.22);
+  color: #a9cbff;
+}
+
+.scorePreview__game em.winner--away {
+  background: rgba(255, 122, 92, 0.22);
+  color: #ffb4a1;
+}
+
+.scorePreview__game em.winner--draw {
+  background: rgba(255, 255, 255, 0.14);
+  color: #d3d6db;
 }
 
 .scorePreview__rule {
@@ -2404,25 +2598,6 @@ input {
   font-size: 15px;
   font-weight: 800;
   color: #14161a;
-}
-
-.totalLine__adj {
-  font-size: 10.5px;
-  font-weight: 700;
-  color: #a8adb4;
-}
-
-.totalLine__h {
-  font-style: normal;
-  font-weight: 800;
-  color: #0e9d8b;
-}
-
-.totalLine__p {
-  font-style: normal;
-  font-weight: 800;
-  color: #c93a16;
-  margin-left: 3px;
 }
 
 .totalLine__warn {

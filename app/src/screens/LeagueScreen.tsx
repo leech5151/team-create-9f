@@ -38,6 +38,7 @@ import { PlayersTab } from './league/PlayersTab';
 import { PlayTab } from './league/PlayTab';
 import { ScheduleTab } from './league/ScheduleTab';
 import { MainTab } from './league/MainTab';
+import { StandingsTab } from './league/StandingsTab';
 import { DrawTab } from './league/DrawTab';
 
 interface Props {
@@ -59,6 +60,8 @@ export function LeagueScreen({ tab, onGoTab, isAdmin, onNotify }: Props) {
   const [matchSheet, setMatchSheet] = useState(false);
   const [editingMatch, setEditingMatch] = useState<Match | null>(null);
   const [recordingMatch, setRecordingMatch] = useState<Match | null>(null);
+  /** 경기일정에서 조회만 하려고 연 경기. 기록용과 달리 저장 경로가 없다. */
+  const [viewingMatch, setViewingMatch] = useState<Match | null>(null);
   const [lineupMatch, setLineupMatch] = useState<Match | null>(null);
 
   // Which 회차/주차 is on screen. Held in memory rather than persisted so a
@@ -298,8 +301,57 @@ export function LeagueScreen({ tab, onGoTab, isAdmin, onNotify }: Props) {
   const removeMatch = (match: Match) =>
     attempt(() => deleteMatch(match.id), '대진을 삭제했어요');
 
+  const pickSeason = (id: string) => {
+    setSeasonId(id);
+    setWeekId(null);
+  };
+
   return (
     <>
+      {/* 회차는 탭 위에서 한 번만 고른다 — 모든 탭이 같은 회차를 본다. */}
+      {snapshot.seasons.length > 0 && (
+        <div className="seasonBar">
+          <span className="seasonBar__label">회차</span>
+          <div className="seasonBar__chips">
+            {snapshot.seasons.map((s) => (
+              <button
+                type="button"
+                key={s.id}
+                className={`chip${season?.id === s.id ? ' chip--on' : ''}`}
+                onClick={() => pickSeason(s.id)}
+              >
+                {s.edition}회
+                {s.isActive && <span className="chip__now">현재</span>}
+              </button>
+            ))}
+            {isAdmin && season && (
+              <button
+                type="button"
+                className="chip chip--ghost"
+                onClick={() => setEditingSeason(season)}
+              >
+                ⚙ 설정
+              </button>
+            )}
+            {isAdmin && (
+              <button type="button" className="chip chip--ghost" onClick={() => setSeasonSheet(true)}>
+                + 회차
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+
+      {tab === 'standings' && (
+        <StandingsTab
+          snapshot={snapshot}
+          state={league.state}
+          error={league.error}
+          season={season}
+          onRetry={() => void league.refresh()}
+        />
+      )}
+
       {tab === 'players' && (
         <PlayersTab
           snapshot={snapshot}
@@ -320,13 +372,8 @@ export function LeagueScreen({ tab, onGoTab, isAdmin, onNotify }: Props) {
           isAdmin={isAdmin}
           season={season}
           week={week}
-          onPickSeason={(id) => {
-            setSeasonId(id);
-            setWeekId(null);
-          }}
           onPickWeek={setWeekId}
           onCreateSeason={() => setSeasonSheet(true)}
-          onEditSeason={setEditingSeason}
           onGoDraw={() => onGoTab('draw')}
           onCreateMatch={() => setMatchSheet(true)}
           onLineupMatch={setLineupMatch}
@@ -343,11 +390,8 @@ export function LeagueScreen({ tab, onGoTab, isAdmin, onNotify }: Props) {
           error={league.error}
           season={season}
           week={week}
-          onPickSeason={(id) => {
-            setSeasonId(id);
-            setWeekId(null);
-          }}
           onPickWeek={setWeekId}
+          onViewMatch={setViewingMatch}
           onRetry={() => void league.refresh()}
         />
       )}
@@ -372,10 +416,6 @@ export function LeagueScreen({ tab, onGoTab, isAdmin, onNotify }: Props) {
           state={league.state}
           error={league.error}
           season={season}
-          onPickSeason={(id) => {
-            setSeasonId(id);
-            setWeekId(null);
-          }}
           onRetry={() => void league.refresh()}
         />
       )}
@@ -437,6 +477,17 @@ export function LeagueScreen({ tab, onGoTab, isAdmin, onNotify }: Props) {
           existing={snapshot.scores.filter((s) => s.matchId === recordingMatch.id)}
           onSave={recordScores}
           onClose={() => setRecordingMatch(null)}
+        />
+      )}
+
+      {viewingMatch && (
+        <ScoreSheet
+          match={viewingMatch}
+          home={sideFor(viewingMatch.homeTeamId, viewingMatch.id)}
+          away={sideFor(viewingMatch.awayTeamId, viewingMatch.id)}
+          existing={snapshot.scores.filter((s) => s.matchId === viewingMatch.id)}
+          readOnly
+          onClose={() => setViewingMatch(null)}
         />
       )}
 

@@ -32,6 +32,8 @@ export interface Appearance {
   handicap: number;
   /** Subtracted from every game. Magnitude only — never negative. */
   penalty: number;
+  /** Registered 점수, used to size the per-match handicap. Null if unrecorded. */
+  avg: number | null;
 }
 
 export interface GameScore {

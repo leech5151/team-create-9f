@@ -1,16 +1,17 @@
 import { useState } from 'react';
-import type { LeagueSnapshot, Season, Week } from '../../league/api';
+import type { LeagueSnapshot, Match, Season, Week } from '../../league/api';
 import type { LeaguePlayer } from '../../league/types';
 import type { LoadState } from '../../league/useLeague';
 import {
-  leagueTable,
   OUTCOME_LABEL,
   outcomeFor,
   pointsFor,
   resultByMatch,
   type Outcome,
 } from '../../league/standings';
+import { TeamAdjust } from '../../components/league/TeamAdjust';
 import { orderRoster, TIER_META, type TieredPlayer } from '../../league/tiers';
+import { fixtureHandicaps } from '../../league/scoring';
 import {
   isCurrentWeek,
   parseDate,
@@ -19,7 +20,6 @@ import {
   weekdayOf,
   weekRange,
 } from '../../league/schedule';
-import { MAX_POINTS } from '../../league/scoring';
 
 interface Props {
   snapshot: LeagueSnapshot;
@@ -27,8 +27,9 @@ interface Props {
   error: string | null;
   season: Season | null;
   week: Week | null;
-  onPickSeason: (id: string) => void;
   onPickWeek: (id: string) => void;
+  /** Opens the record sheet read-only, so anyone can look up a night. */
+  onViewMatch: (match: Match) => void;
   onRetry: () => void;
 }
 
@@ -42,8 +43,8 @@ export function ScheduleTab({
   error,
   season,
   week,
-  onPickSeason,
   onPickWeek,
+  onViewMatch,
   onRetry,
 }: Props) {
   const { seasons, teams, weeks, entries, players } = snapshot;
@@ -51,20 +52,34 @@ export function ScheduleTab({
   const [weekday, setWeekday] = useState<number | null>(null);
 
   const seasonWeeks = season ? weeks.filter((w) => w.seasonId === season.id) : [];
-  const table = season ? leagueTable(snapshot, season.id) : [];
-  const anyPlayed = table.some((r) => r.played > 0);
 
   const playerById = new Map(players.map((p) => [p.id, p] as const));
-  const rosterOf = (teamId: string): TieredPlayer[] =>
-    orderRoster(
-      entries
-        .filter((e) => e.teamId === teamId)
-        .map((e) => playerById.get(e.playerId))
-        .filter((p): p is LeaguePlayer => p !== undefined),
+  /**
+   * Who to show for a team in a fixture: the recorded line-up, or the whole
+   * squad before one is set. 경기일정 was showing the squad unconditionally,
+   * so players who sat out still appeared.
+   */
+  const rosterOf = (teamId: string, matchId?: string): TieredPlayer[] => {
+    const lineup = matchId
+      ? snapshot.lineups.filter((l) => l.matchId === matchId && l.teamId === teamId)
+      : [];
+    const ids =
+      lineup.length > 0
+        ? lineup.map((l) => l.playerId)
+        : entries.filter((e) => e.teamId === teamId).map((e) => e.playerId);
+    return orderRoster(
+      ids.map((id) => playerById.get(id)).filter((p): p is LeaguePlayer => p !== undefined),
       players,
     );
+  };
   const teamName = (id: string) => teams.find((t) => t.id === id)?.name ?? '삭제된 팀';
   const results = season ? resultByMatch(snapshot, season.id) : new Map();
+
+  /** 점수 합으로 정해지는 대진 핸디캡을 양 팀에 나눠준다. */
+  const fixtureExtra = (matchId: string, homeId: string, awayId: string) => {
+    const sum = (r: readonly LeaguePlayer[]) => r.reduce((t, p) => t + (p.avg ?? 0), 0);
+    return fixtureHandicaps(sum(rosterOf(homeId, matchId)), sum(rosterOf(awayId, matchId)));
+  };
 
   const weekMatchesAll = week
     ? snapshot.matches
@@ -112,76 +127,6 @@ export function ScheduleTab({
         </div>
       )}
 
-      {seasons.length > 1 && (
-        <div className="pickRow">
-          <span className="pickRow__label">회차</span>
-          <div className="pickRow__chips">
-            {seasons.map((s) => (
-              <button
-                type="button"
-                key={s.id}
-                className={`chip${season?.id === s.id ? ' chip--on' : ''}`}
-                onClick={() => onPickSeason(s.id)}
-              >
-                {s.edition}회
-                {s.isActive && <span className="chip__now">현재</span>}
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* ── 순위표 ── */}
-      <div className="sectionLabel">
-        {season?.edition}회 순위
-        {!anyPlayed && <span className="sectionLabel__note">경기 결과 입력 전</span>}
-      </div>
-
-      {table.length === 0 ? (
-        <div className="empty">팀이 등록되면 순위표가 표시됩니다.</div>
-      ) : (
-        <div className="tableWrap">
-          <table className="ltable">
-            <thead>
-              <tr>
-                <th className="ltable__rank">#</th>
-                <th className="ltable__team">팀</th>
-                <th>경기</th>
-                <th>게임승</th>
-                <th>총점승</th>
-                <th className="ltable__pts">승점</th>
-                <th className="ltable__pins">누적득점</th>
-              </tr>
-            </thead>
-            <tbody>
-              {table.map((row, i) => (
-                <tr key={row.teamId} className={i < 3 && anyPlayed ? 'ltable__row--top' : undefined}>
-                  <td className="ltable__rank">{i + 1}</td>
-                  <td className="ltable__team">
-                    <div className="ltable__name">{row.teamName}</div>
-                    <div className="ltable__roster">
-                      {rosterOf(row.teamId)
-                        .map((p) => p.name)
-                        .join(' · ') || '미배정'}
-                    </div>
-                  </td>
-                  <td>{row.played}</td>
-                  <td>{row.gameWins}</td>
-                  <td>{row.totalWins}</td>
-                  <td className="ltable__pts">{row.points}</td>
-                  <td className="ltable__pins">{row.totalPins || '–'}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
-
-      <div className="hintBox hintBox--tight">
-        경기당 최대 {MAX_POINTS}승 — 게임 3승 + 3게임 총점 1승. 승점이 같으면 누적득점 순.
-      </div>
-
-      {/* ── 이번 주차 일정 ── */}
       <div className="sectionLabel">
         {week ? `${week.weekNo}주차 일정` : '주차 일정'}
         {season && week && isCurrentWeek(season.startDate, week.weekNo) && (
@@ -267,20 +212,33 @@ export function ScheduleTab({
                     {m.laneNo === null ? '레인 미정' : `${m.laneNo}번 레인`}
                   </span>
                 </span>
+                <span className="fixture__actions">
+                  <button
+                    type="button"
+                    className="fixture__edit"
+                    onClick={() => onViewMatch(m)}
+                    aria-label="경기 상세"
+                  >
+                    경기상세
+                    {!results.has(m.id) && <em className="fixture__badge fixture__badge--muted">기록 전</em>}
+                  </button>
+                </span>
               </div>
               <div className="fixture__body">
                 <ScheduleSide
                   name={teamName(m.homeTeamId)}
-                  roster={rosterOf(m.homeTeamId)}
+                  roster={rosterOf(m.homeTeamId, m.id)}
                   outcome={results.has(m.id) ? outcomeFor(results.get(m.id)!, true) : null}
                   points={results.has(m.id) ? pointsFor(results.get(m.id)!, true) : null}
+                  fixtureHandicap={fixtureExtra(m.id, m.homeTeamId, m.awayTeamId).home}
                 />
                 <div className="fixture__vs">VS</div>
                 <ScheduleSide
                   name={teamName(m.awayTeamId)}
-                  roster={rosterOf(m.awayTeamId)}
+                  roster={rosterOf(m.awayTeamId, m.id)}
                   outcome={results.has(m.id) ? outcomeFor(results.get(m.id)!, false) : null}
                   points={results.has(m.id) ? pointsFor(results.get(m.id)!, false) : null}
+                  fixtureHandicap={fixtureExtra(m.id, m.homeTeamId, m.awayTeamId).away}
                 />
               </div>
             </div>
@@ -291,12 +249,13 @@ export function ScheduleTab({
   );
 }
 
-function ScheduleSide({ name, roster, outcome, points }: {
+function ScheduleSide({ name, roster, outcome, points, fixtureHandicap }: {
   name: string;
   roster: readonly TieredPlayer[];
   /** null until both sides' scores are in. */
   outcome: Outcome | null;
   points: string | null;
+  fixtureHandicap: number;
 }) {
   return (
     <div className="fixture__side">
@@ -325,6 +284,7 @@ function ScheduleSide({ name, roster, outcome, points }: {
           ))
         )}
       </div>
+      <TeamAdjust roster={roster} fixtureHandicap={fixtureHandicap} />
     </div>
   );
 }

@@ -61,7 +61,12 @@ function sideOf(
 
   return {
     teamId,
-    lineup: roster.map((p) => ({ playerId: p.id, handicap: p.handicap, penalty: p.penalty })),
+    lineup: roster.map((p) => ({
+      playerId: p.id,
+      handicap: p.handicap,
+      penalty: p.penalty,
+      avg: p.avg,
+    })),
     scores,
   };
 }

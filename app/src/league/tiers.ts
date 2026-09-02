@@ -168,7 +168,11 @@ export function orderRoster(
 ): TieredPlayer[] {
   const tierOf = new Map(assignLeagueTiers(allPlayers).map((p) => [p.id, p.tier] as const));
 
-  return members
+  // Deduplicate by id: a stray double row anywhere upstream would otherwise
+  // render the same player twice in a fixture.
+  const unique = [...new Map(members.map((m) => [m.id, m] as const)).values()];
+
+  return unique
     .map((m) => ({ ...m, tier: tierOf.get(m.id) ?? null }))
     .sort((a, b) => {
       const ra = a.tier === null ? 3 : TIER_RANK[a.tier];

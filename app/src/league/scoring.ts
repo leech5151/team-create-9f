@@ -7,9 +7,53 @@ import { GAMES_PER_MATCH, type GameNo, type SideInput } from './types';
  *
  * 조정값: 선수별로 핸디를 더하고 패널티를 뺀다. 둘 다 매 게임에 반영되므로
  * 3게임이면 3번씩 적용된다. 두 값은 크기로만 저장되고 부호는 여기서 정한다.
+ *
+ * 여기에 대진 핸디캡이 더해진다 — 양 팀 점수 합의 차이만큼 약팀에 주는 보정으로,
+ * 10 단위로 끊고 60 을 넘지 않는다.
  */
 
 const GAME_NOS: readonly GameNo[] = [1, 2, 3];
+
+/** 대진 핸디캡: 10 단위, 최대 60, 10 미만이면 없음. */
+export const MATCH_HANDICAP_STEP = 10;
+export const MATCH_HANDICAP_MAX = 60;
+
+/**
+ * The extra handicap the weaker side gets for this fixture.
+ *
+ * `gap` is the difference between the two line-ups' registered 점수 totals,
+ * which is a per-game figure — a team 45 short on paper is 45 short each game —
+ * so the result applies to every game rather than once per match.
+ *
+ * Rounded down to `MATCH_HANDICAP_STEP`: a gap of 45 gives 40, and anything
+ * under one step gives nothing. Capped at `MATCH_HANDICAP_MAX`.
+ */
+export function matchHandicap(gap: number): number {
+  if (gap < MATCH_HANDICAP_STEP) return 0;
+  const stepped = Math.floor(gap / MATCH_HANDICAP_STEP) * MATCH_HANDICAP_STEP;
+  return Math.min(MATCH_HANDICAP_MAX, stepped);
+}
+
+/**
+ * The fixture handicap each side carries, from their 점수 totals.
+ *
+ * Only the weaker side gets one; an even fixture gives both zero.
+ */
+export function fixtureHandicaps(
+  homeStrength: number,
+  awayStrength: number,
+): { home: number; away: number } {
+  const extra = matchHandicap(Math.abs(homeStrength - awayStrength));
+  return {
+    home: homeStrength < awayStrength ? extra : 0,
+    away: awayStrength < homeStrength ? extra : 0,
+  };
+}
+
+/** Sum of the line-up's registered 점수; players without one contribute nothing. */
+export function lineupStrength(side: SideInput): number {
+  return side.lineup.reduce((sum, a) => sum + (a.avg ?? 0), 0);
+}
 
 export interface TeamGame {
   gameNo: GameNo;
@@ -29,6 +73,8 @@ export interface TeamTally {
   highGame: number;
   /** Worst single handicapped game. */
   lowGame: number;
+  /** 대진 핸디캡이 매 게임에 더해진 양. 0 이면 적용되지 않았다. */
+  matchHandicap: number;
   /**
    * 하이로우: gap between the best and worst game. A wide gap means an
    * inconsistent night, so a *smaller* spread wins the tiebreak.
@@ -40,8 +86,13 @@ export interface TeamTally {
   spread: number;
 }
 
-/** Per-game and aggregate figures for one side. */
-export function tally(side: SideInput): TeamTally {
+/**
+ * Per-game and aggregate figures for one side.
+ *
+ * `extraPerGame` is the fixture's handicap for this side, already decided by
+ * comparing the two line-ups — see `scoreMatch`.
+ */
+export function tally(side: SideInput, extraPerGame = 0): TeamTally {
   // Net per-player adjustment: handicap adds, penalty subtracts.
   const adjustmentOf = new Map(
     side.lineup.map((a) => [a.playerId, a.handicap - a.penalty] as const),
@@ -52,7 +103,7 @@ export function tally(side: SideInput): TeamTally {
     const scratch = rows.reduce((sum, s) => sum + s.pins, 0);
     // Counts once per player per game.
     const adjustment = rows.reduce((sum, s) => sum + (adjustmentOf.get(s.playerId) ?? 0), 0);
-    return { gameNo, scratch, total: scratch + adjustment };
+    return { gameNo, scratch, total: scratch + adjustment + extraPerGame };
   });
 
   const totals = games.map((g) => g.total);
@@ -66,6 +117,7 @@ export function tally(side: SideInput): TeamTally {
     highGame,
     lowGame,
     spread: highGame - lowGame,
+    matchHandicap: extraPerGame,
   };
 }
 
@@ -119,8 +171,14 @@ export interface MatchResult {
 }
 
 export function scoreMatch(homeSide: SideInput, awaySide: SideInput): MatchResult {
-  const home = tally(homeSide);
-  const away = tally(awaySide);
+  // The weaker line-up on paper carries the fixture handicap.
+  const homeStrength = lineupStrength(homeSide);
+  const awayStrength = lineupStrength(awaySide);
+  const gap = Math.abs(homeStrength - awayStrength);
+  const extra = matchHandicap(gap);
+
+  const home = tally(homeSide, homeStrength < awayStrength ? extra : 0);
+  const away = tally(awaySide, awayStrength < homeStrength ? extra : 0);
 
   const gameDecisions = GAME_NOS.map((n) =>
     decide(home.games[n - 1]!.total, away.games[n - 1]!.total, home, away),
