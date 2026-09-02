@@ -94,6 +94,7 @@ export function MainTab({ snapshot, state, error, season, onPickSeason, onRetry 
                 onClick={() => onPickSeason(s.id)}
               >
                 {s.edition}회
+                {s.isActive && <span className="chip__now">현재</span>}
               </button>
             ))}
           </div>
@@ -156,7 +157,7 @@ export function MainTab({ snapshot, state, error, season, onPickSeason, onRetry 
                 <span className="statRow2__pos">{i + 1}</span>
                 <span className="statRow2__name">{s.player.name}</span>
                 <span className="statRow2__sub">
-                  {s.games}게임 · 평균 {s.average} · 하이 {s.highGame}
+                  {s.appearances}경기 · {s.games}게임 · 평균 {s.average} · 하이 {s.highGame}
                 </span>
                 <span className="statRow2__value">{s.totalPins}</span>
               </div>

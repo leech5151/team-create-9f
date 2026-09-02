@@ -93,3 +93,21 @@ export function isCurrentWeek(
   if (range === null) return false;
   return today >= range.start && today <= range.end;
 }
+
+
+/** Monday-first weekday order, as Korean schedules are written. */
+export const WEEKDAYS: readonly { label: string; day: number }[] = [
+  { label: '월', day: 1 },
+  { label: '화', day: 2 },
+  { label: '수', day: 3 },
+  { label: '목', day: 4 },
+  { label: '금', day: 5 },
+  { label: '토', day: 6 },
+  { label: '일', day: 0 },
+];
+
+/** Day of week (0 = Sunday) for an ISO date, or null when unset. */
+export function weekdayOf(iso: string | null): number | null {
+  const ms = parseDate(iso);
+  return ms === null ? null : new Date(ms).getUTCDay();
+}

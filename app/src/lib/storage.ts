@@ -1,6 +1,5 @@
 import type {
   HistoryEntry,
-  LeagueTab,
   Member,
   Options,
   ResultView,
@@ -20,8 +19,6 @@ export interface PersistedState {
   /** Which top-level area is open. */
   section: Section;
   screen: Screen;
-  /** Active tab inside 상주리그. */
-  leagueTab: LeagueTab;
   /** Operator-chosen lane count for 팀짜기; null follows the attendance. */
   laneCount: number | null;
   /** Current draw's lanes as member ids, so roster edits reconcile on load. */
@@ -41,7 +38,6 @@ export function initialState(): PersistedState {
     game: 1,
     section: 'home',
     screen: 'roster',
-    leagueTab: 'main',
     laneCount: null,
     laneIds: [],
     queue: [],
@@ -62,9 +58,6 @@ function parseMember(raw: unknown): Member | null {
   if (typeof m.avg !== 'number' || !Number.isFinite(m.avg)) return null;
   return { id: m.id, name: m.name, gender: m.gender, avg: m.avg };
 }
-
-const isLeagueTab = (v: unknown): v is LeagueTab =>
-  v === 'main' || v === 'play' || v === 'schedule' || v === 'players';
 
 const asIdList = (raw: unknown, known: ReadonlySet<string>): string[] =>
   Array.isArray(raw) ? raw.filter((v): v is string => typeof v === 'string' && known.has(v)) : [];
@@ -137,7 +130,6 @@ export function loadState(): PersistedState {
     history,
     game: typeof s.game === 'number' && s.game >= 1 ? Math.floor(s.game) : 1,
     section: s.section === 'teams' || s.section === 'league' ? s.section : 'home',
-    leagueTab: isLeagueTab(s.leagueTab) ? s.leagueTab : 'main',
     laneCount:
       typeof s.laneCount === 'number' && s.laneCount >= 1 ? Math.floor(s.laneCount) : null,
     // A draw screen with no lanes has nothing to show — send it back to 명단.

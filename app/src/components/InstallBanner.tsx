@@ -1,11 +1,19 @@
 interface BannerProps {
-  /** true = browser install dialog available, false = iOS manual instructions. */
+  /** The browser can open its own install dialog. */
   canPrompt: boolean;
+  isIos: boolean;
   onInstall: () => void;
   onCollapse: () => void;
 }
 
-export function InstallBanner({ canPrompt, onInstall, onCollapse }: BannerProps) {
+/** What to tell the user, given what this browser actually supports. */
+function guidance(canPrompt: boolean, isIos: boolean): string {
+  if (canPrompt) return '전체화면으로 열리고, 오프라인에서도 볼 수 있어요.';
+  if (isIos) return '공유 버튼 → “홈 화면에 추가”를 누르면 앱처럼 열려요.';
+  return '브라우저 메뉴에서 “앱 설치” 또는 “홈 화면에 추가”를 선택하세요.';
+}
+
+export function InstallBanner({ canPrompt, isIos, onInstall, onCollapse }: BannerProps) {
   return (
     <div className="install">
       <div className="install__icon" aria-hidden="true">
@@ -15,11 +23,7 @@ export function InstallBanner({ canPrompt, onInstall, onCollapse }: BannerProps)
       </div>
       <div className="install__body">
         <div className="install__title">홈 화면에 앱으로 추가</div>
-        <div className="install__sub">
-          {canPrompt
-            ? '전체화면으로 열리고, 오프라인에서도 배정할 수 있어요.'
-            : '공유 버튼 → “홈 화면에 추가”를 누르면 앱처럼 열려요.'}
-        </div>
+        <div className="install__sub">{guidance(canPrompt, isIos)}</div>
       </div>
       {canPrompt && (
         <button type="button" className="install__cta" onClick={onInstall}>

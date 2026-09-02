@@ -4,21 +4,25 @@ import type { LeaguePlayer } from '../league/types';
 import {
   createMatch,
   createSeason,
-  createTeam,
   deleteSeason,
   deleteMatch,
   deletePlayer,
-  deleteTeam,
   insertPlayers,
+  appendTeam,
+  assignPlayer,
+  clearCaptain,
+  createEmptyTeams,
+  deleteTeam,
+  setSeasonActive,
+  setCaptain,
   saveGameScores,
+  setLineup,
   updateMatch,
   updatePlayer,
   updateSeason,
-  updateTeam,
   type Match,
   type ScoreEntry,
   type Season,
-  type Team,
   type PlayerDraft,
 } from '../league/api';
 import { useLeague } from '../league/useLeague';
@@ -27,22 +31,24 @@ import { currentWeekNo, weekDays } from '../league/schedule';
 import { AddPlayersSheet } from '../components/AddPlayersSheet';
 import { PlayerSheet } from '../components/PlayerSheet';
 import { SeasonSheet } from '../components/league/SeasonSheet';
-import { TeamSheet } from '../components/league/TeamSheet';
 import { MatchSheet } from '../components/league/MatchSheet';
 import { ScoreSheet } from '../components/league/ScoreSheet';
+import { LineupSheet } from '../components/league/LineupSheet';
 import { PlayersTab } from './league/PlayersTab';
 import { PlayTab } from './league/PlayTab';
 import { ScheduleTab } from './league/ScheduleTab';
 import { MainTab } from './league/MainTab';
+import { DrawTab } from './league/DrawTab';
 
 interface Props {
   tab: LeagueTab;
+  onGoTab: (tab: LeagueTab) => void;
   /** Signed-in operator; the session itself lives in the shared app bar. */
   isAdmin: boolean;
   onNotify: (message: string) => void;
 }
 
-export function LeagueScreen({ tab, isAdmin, onNotify }: Props) {
+export function LeagueScreen({ tab, onGoTab, isAdmin, onNotify }: Props) {
   const league = useLeague();
   const { snapshot } = league;
 
@@ -50,19 +56,26 @@ export function LeagueScreen({ tab, isAdmin, onNotify }: Props) {
   const [editing, setEditing] = useState<LeaguePlayer | null>(null);
   const [seasonSheet, setSeasonSheet] = useState(false);
   const [editingSeason, setEditingSeason] = useState<Season | null>(null);
-  const [teamSheet, setTeamSheet] = useState(false);
-  const [editingTeam, setEditingTeam] = useState<Team | null>(null);
   const [matchSheet, setMatchSheet] = useState(false);
   const [editingMatch, setEditingMatch] = useState<Match | null>(null);
   const [recordingMatch, setRecordingMatch] = useState<Match | null>(null);
+  const [lineupMatch, setLineupMatch] = useState<Match | null>(null);
 
   // Which 회차/주차 is on screen. Held in memory rather than persisted so a
   // newly created season becomes the selection without extra clicks.
   const [seasonId, setSeasonId] = useState<string | null>(null);
   const [weekId, setWeekId] = useState<string | null>(null);
 
+  /**
+   * The 회차 on screen: an explicit pick, else the one marked current, else the
+   * first. Marking a season current is what makes every tab open on it.
+   */
   const season = useMemo(
-    () => snapshot.seasons.find((s) => s.id === seasonId) ?? snapshot.seasons[0] ?? null,
+    () =>
+      snapshot.seasons.find((s) => s.id === seasonId) ??
+      snapshot.seasons.find((s) => s.isActive) ??
+      snapshot.seasons[0] ??
+      null,
     [snapshot.seasons, seasonId],
   );
 
@@ -97,35 +110,6 @@ export function LeagueScreen({ tab, isAdmin, onNotify }: Props) {
     [snapshot.teams, season],
   );
 
-  /** Players with no team this season — the pool a new team can draw from. */
-  const unassigned = useMemo(() => {
-    if (!season) return snapshot.players;
-    const taken = new Set(
-      snapshot.entries
-        .filter((e) => e.seasonId === season.id && e.teamId !== null)
-        .map((e) => e.playerId),
-    );
-    return snapshot.players.filter((p) => !taken.has(p.id));
-  }, [snapshot.players, snapshot.entries, season]);
-
-  /** Current members of the team being edited, in roster order. */
-  const editingMemberIds = useMemo(() => {
-    if (!editingTeam) return [];
-    return snapshot.entries
-      .filter((e) => e.teamId === editingTeam.id)
-      .map((e) => e.playerId);
-  }, [snapshot.entries, editingTeam]);
-
-  /**
-   * Editing must offer the team's own members too, not just free agents —
-   * otherwise reopening the sheet would show an empty selection.
-   */
-  const editablePool = useMemo(() => {
-    if (!editingTeam) return unassigned;
-    const own = new Set(editingMemberIds);
-    return [...snapshot.players.filter((p) => own.has(p.id)), ...unassigned];
-  }, [snapshot.players, unassigned, editingTeam, editingMemberIds]);
-
   /** Teams already fixtured in the selected week; they cannot play twice. */
   const busyTeamIds = useMemo(() => {
     if (!week) return [];
@@ -134,22 +118,56 @@ export function LeagueScreen({ tab, isAdmin, onNotify }: Props) {
       .flatMap((m) => [m.homeTeamId, m.awayTeamId]);
   }, [snapshot.matches, week]);
 
-  /** Team name plus roster, as the score sheet needs it. */
-  const sideFor = (teamId: string) => {
+  const playerById = useMemo(
+    () => new Map(snapshot.players.map((p) => [p.id, p] as const)),
+    [snapshot.players],
+  );
+
+  /**
+   * The side as the score sheet needs it: the recorded line-up when there is
+   * one, otherwise the whole squad.
+   */
+  const sideFor = (teamId: string, matchId: string) => {
     const team = snapshot.teams.find((t) => t.id === teamId);
-    const byId = new Map(snapshot.players.map((p) => [p.id, p] as const));
+    const lineup = snapshot.lineups.filter((l) => l.matchId === matchId && l.teamId === teamId);
+    const ids =
+      lineup.length > 0
+        ? lineup.map((l) => l.playerId)
+        : snapshot.entries.filter((e) => e.teamId === teamId).map((e) => e.playerId);
     return {
       teamId,
       teamName: team?.name ?? '삭제된 팀',
       roster: orderRoster(
-        snapshot.entries
-          .filter((e) => e.teamId === teamId)
-          .map((e) => byId.get(e.playerId))
-          .filter((p): p is LeaguePlayer => p !== undefined),
+        ids.map((id) => playerById.get(id)).filter((p): p is LeaguePlayer => p !== undefined),
         snapshot.players,
       ),
     };
   };
+
+  /** Squad plus current line-up, for the line-up picker. */
+  const squadFor = (teamId: string, matchId: string) => {
+    const team = snapshot.teams.find((t) => t.id === teamId);
+    const rows = snapshot.entries.filter((e) => e.teamId === teamId);
+    rows.sort((a, b) => Number(b.isCaptain) - Number(a.isCaptain));
+    return {
+      teamId,
+      teamName: team?.name ?? '삭제된 팀',
+      squad: rows
+        .map((e) => playerById.get(e.playerId))
+        .filter((p): p is LeaguePlayer => p !== undefined),
+      captainId: rows.find((e) => e.isCaptain)?.playerId ?? null,
+      playing: snapshot.lineups
+        .filter((l) => l.matchId === matchId && l.teamId === teamId)
+        .map((l) => l.playerId),
+    };
+  };
+
+  const saveLineups = (picks: { teamId: string; playerIds: string[] }[]) =>
+    lineupMatch
+      ? attempt(async () => {
+          for (const pick of picks) await setLineup(lineupMatch.id, pick.teamId, pick.playerIds);
+        }, '출전 선수를 저장했어요')
+      : Promise.resolve('경기를 찾지 못했습니다.');
 
   /** Wraps a write so failures come back as a message instead of throwing. */
   const attempt = async (action: () => Promise<void>, success: string): Promise<string | null> => {
@@ -198,27 +216,14 @@ export function LeagueScreen({ tab, isAdmin, onNotify }: Props) {
         )
       : Promise.resolve('수정할 회차를 찾지 못했습니다.');
 
+  const toggleSeasonActive = (target: Season, active: boolean) =>
+    attempt(
+      () => setSeasonActive(target.id, active),
+      active ? `${target.edition}회를 현재 회차로 지정했어요` : '현재 회차 지정을 해제했어요',
+    );
+
   const removeSeason = (season: Season) =>
     attempt(() => deleteSeason(season.id), `${season.edition}회를 삭제했어요`);
-
-  const addTeam = (name: string, playerIds: string[]) =>
-    season
-      ? attempt(
-          () => createTeam(season.id, name, playerIds, seasonTeams.length),
-          `${name}을 만들었어요`,
-        )
-      : Promise.resolve('회차를 먼저 만들어 주세요.');
-
-  const saveTeam = (name: string, playerIds: string[]) =>
-    editingTeam && season
-      ? attempt(
-          () => updateTeam(editingTeam.id, season.id, name, playerIds),
-          `${name} 정보를 수정했어요`,
-        )
-      : Promise.resolve('수정할 팀을 찾지 못했습니다.');
-
-  const removeTeam = (team: Team) =>
-    attempt(() => deleteTeam(team.id), `${team.name}을 삭제했어요`);
 
   const addMatch = (
     homeTeamId: string,
@@ -253,6 +258,43 @@ export function LeagueScreen({ tab, isAdmin, onNotify }: Props) {
       ? attempt(() => saveGameScores(recordingMatch.id, entries), '경기 기록을 저장했어요')
       : Promise.resolve('기록할 대진을 찾지 못했습니다.');
 
+  // 팀짜기 writes go straight through; each returns null on success.
+  const createTeams = (teamCount: number) =>
+    season
+      ? attempt(() => createEmptyTeams(season.id, teamCount), `${teamCount}개 팀을 만들었어요`)
+      : Promise.resolve('회차를 먼저 만들어 주세요.');
+
+  const addOneTeam = () =>
+    season
+      ? attempt(
+          () => appendTeam(season.id, seasonTeams.map((t) => t.name)),
+          '팀을 추가했어요',
+        )
+      : Promise.resolve('회차를 먼저 만들어 주세요.');
+
+  const removeOneTeam = (teamId: string) =>
+    season
+      ? attempt(() => deleteTeam(teamId), '팀을 삭제했어요')
+      : Promise.resolve('회차를 먼저 만들어 주세요.');
+
+  const assignToTeam = (playerId: string, teamId: string | null) =>
+    season
+      ? attempt(
+          () => assignPlayer(season.id, playerId, teamId),
+          teamId === null ? '팀에서 제외했어요' : '팀에 배정했어요',
+        )
+      : Promise.resolve('회차를 먼저 만들어 주세요.');
+
+  const makeCaptain = (teamId: string, playerId: string) =>
+    season
+      ? attempt(() => setCaptain(season.id, teamId, playerId), '팀장을 지정했어요')
+      : Promise.resolve('회차를 먼저 만들어 주세요.');
+
+  const dropCaptain = (playerId: string) =>
+    season
+      ? attempt(() => clearCaptain(season.id, playerId), '팀장을 해제했어요')
+      : Promise.resolve('회차를 먼저 만들어 주세요.');
+
   const removeMatch = (match: Match) =>
     attempt(() => deleteMatch(match.id), '대진을 삭제했어요');
 
@@ -285,9 +327,9 @@ export function LeagueScreen({ tab, isAdmin, onNotify }: Props) {
           onPickWeek={setWeekId}
           onCreateSeason={() => setSeasonSheet(true)}
           onEditSeason={setEditingSeason}
-          onCreateTeam={() => setTeamSheet(true)}
-          onEditTeam={setEditingTeam}
+          onGoDraw={() => onGoTab('draw')}
           onCreateMatch={() => setMatchSheet(true)}
+          onLineupMatch={setLineupMatch}
           onRecordMatch={setRecordingMatch}
           onEditMatch={setEditingMatch}
           onRetry={() => void league.refresh()}
@@ -307,6 +349,20 @@ export function LeagueScreen({ tab, isAdmin, onNotify }: Props) {
           }}
           onPickWeek={setWeekId}
           onRetry={() => void league.refresh()}
+        />
+      )}
+
+      {tab === 'draw' && (
+        <DrawTab
+          snapshot={snapshot}
+          season={season}
+          isAdmin={isAdmin}
+          onCreateTeams={createTeams}
+          onAddTeam={addOneTeam}
+          onDeleteTeam={removeOneTeam}
+          onAssign={assignToTeam}
+          onSetCaptain={makeCaptain}
+          onClearCaptain={dropCaptain}
         />
       )}
 
@@ -357,28 +413,8 @@ export function LeagueScreen({ tab, isAdmin, onNotify }: Props) {
           suggestedEdition={editingSeason.edition}
           onSave={saveSeason}
           onDelete={removeSeason}
+          onSetActive={toggleSeasonActive}
           onClose={() => setEditingSeason(null)}
-        />
-      )}
-
-      {teamSheet && (
-        <TeamSheet
-          available={unassigned}
-          suggestedName={`${seasonTeams.length + 1}팀`}
-          onSave={addTeam}
-          onClose={() => setTeamSheet(false)}
-        />
-      )}
-
-      {editingTeam && (
-        <TeamSheet
-          team={editingTeam}
-          available={editablePool}
-          initialPlayerIds={editingMemberIds}
-          suggestedName={editingTeam.name}
-          onSave={saveTeam}
-          onDelete={removeTeam}
-          onClose={() => setEditingTeam(null)}
         />
       )}
 
@@ -396,11 +432,21 @@ export function LeagueScreen({ tab, isAdmin, onNotify }: Props) {
       {recordingMatch && (
         <ScoreSheet
           match={recordingMatch}
-          home={sideFor(recordingMatch.homeTeamId)}
-          away={sideFor(recordingMatch.awayTeamId)}
+          home={sideFor(recordingMatch.homeTeamId, recordingMatch.id)}
+          away={sideFor(recordingMatch.awayTeamId, recordingMatch.id)}
           existing={snapshot.scores.filter((s) => s.matchId === recordingMatch.id)}
           onSave={recordScores}
           onClose={() => setRecordingMatch(null)}
+        />
+      )}
+
+      {lineupMatch && (
+        <LineupSheet
+          match={lineupMatch}
+          home={squadFor(lineupMatch.homeTeamId, lineupMatch.id)}
+          away={squadFor(lineupMatch.awayTeamId, lineupMatch.id)}
+          onSave={saveLineups}
+          onClose={() => setLineupMatch(null)}
         />
       )}
 

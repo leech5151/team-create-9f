@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import type { LeagueSnapshot, Season, Week } from '../../league/api';
 import type { LeaguePlayer } from '../../league/types';
 import type { LoadState } from '../../league/useLeague';
@@ -10,7 +11,14 @@ import {
   type Outcome,
 } from '../../league/standings';
 import { orderRoster, TIER_META, type TieredPlayer } from '../../league/tiers';
-import { isCurrentWeek, parseDate, shortDate, weekRange } from '../../league/schedule';
+import {
+  isCurrentWeek,
+  parseDate,
+  shortDate,
+  WEEKDAYS,
+  weekdayOf,
+  weekRange,
+} from '../../league/schedule';
 import { MAX_POINTS } from '../../league/scoring';
 
 interface Props {
@@ -39,6 +47,8 @@ export function ScheduleTab({
   onRetry,
 }: Props) {
   const { seasons, teams, weeks, entries, players } = snapshot;
+  /** null = 전체; otherwise a day index (0 = Sunday). */
+  const [weekday, setWeekday] = useState<number | null>(null);
 
   const seasonWeeks = season ? weeks.filter((w) => w.seasonId === season.id) : [];
   const table = season ? leagueTable(snapshot, season.id) : [];
@@ -56,7 +66,7 @@ export function ScheduleTab({
   const teamName = (id: string) => teams.find((t) => t.id === id)?.name ?? '삭제된 팀';
   const results = season ? resultByMatch(snapshot, season.id) : new Map();
 
-  const weekMatches = week
+  const weekMatchesAll = week
     ? snapshot.matches
         .filter((m) => m.weekId === week.id)
         .slice()
@@ -67,6 +77,10 @@ export function ScheduleTab({
             (a.laneNo ?? Infinity) - (b.laneNo ?? Infinity),
         )
     : [];
+  const weekMatches =
+    weekday === null
+      ? weekMatchesAll
+      : weekMatchesAll.filter((m) => weekdayOf(m.playedOn) === weekday);
 
   const range = season && week ? weekRange(season.startDate, week.weekNo) : null;
 
@@ -110,6 +124,7 @@ export function ScheduleTab({
                 onClick={() => onPickSeason(s.id)}
               >
                 {s.edition}회
+                {s.isActive && <span className="chip__now">현재</span>}
               </button>
             ))}
           </div>
@@ -197,6 +212,35 @@ export function ScheduleTab({
         </div>
       )}
 
+      {seasonWeeks.length > 0 && (
+        <div className="pickRow">
+          <span className="pickRow__label">요일</span>
+          <div className="pickRow__chips">
+            <button
+              type="button"
+              className={`chip${weekday === null ? ' chip--on' : ''}`}
+              onClick={() => setWeekday(null)}
+            >
+              전체
+            </button>
+            {WEEKDAYS.map((w) => {
+              const count = weekMatchesAll.filter((m) => weekdayOf(m.playedOn) === w.day).length;
+              return (
+                <button
+                  type="button"
+                  key={w.day}
+                  className={`chip${weekday === w.day ? ' chip--on' : ''}`}
+                  onClick={() => setWeekday(weekday === w.day ? null : w.day)}
+                >
+                  {w.label}
+                  {count > 0 && <span className="chip__badge">{count}</span>}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
       {range && (
         <div className="weekRange">
           {shortDate(range.start)} ~ {shortDate(range.end)}
@@ -205,7 +249,11 @@ export function ScheduleTab({
 
       {weekMatches.length === 0 ? (
         <div className="empty">
-          {week ? `${week.weekNo}주차 대진이 아직 공지되지 않았어요.` : '주차를 선택해 주세요.'}
+          {!week
+            ? '주차를 선택해 주세요.'
+            : weekday !== null && weekMatchesAll.length > 0
+              ? '이 요일에는 대진이 없어요.'
+              : `${week.weekNo}주차 대진이 아직 공지되지 않았어요.`}
         </div>
       ) : (
         <div className="fixtures">

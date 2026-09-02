@@ -15,6 +15,8 @@ import type { LeaguePlayer } from './types';
 
 export interface PlayerStat {
   player: LeaguePlayer;
+  /** Matches the player was named in the line-up for. */
+  appearances: number;
   games: number;
   /** Sum of scratch pins — the MVP measure. */
   totalPins: number;
@@ -36,6 +38,8 @@ export function playerStats(snapshot: LeagueSnapshot, seasonId: string): PlayerS
   );
   const playerById = new Map(snapshot.players.map((p) => [p.id, p] as const));
 
+  const appearanceCount = countAppearances(snapshot, matchIds);
+
   const acc = new Map<string, { games: number; total: number; high: number }>();
   for (const row of snapshot.scores) {
     if (!matchIds.has(row.matchId)) continue;
@@ -53,6 +57,7 @@ export function playerStats(snapshot: LeagueSnapshot, seasonId: string): PlayerS
     const average = Math.round(total / games);
     stats.push({
       player,
+      appearances: appearanceCount.get(playerId) ?? 0,
       games,
       totalPins: total,
       average,
@@ -85,4 +90,46 @@ export function improvers(stats: readonly PlayerStat[]): PlayerStat[] {
   return stats
     .filter((s): s is PlayerStat & { delta: number } => s.delta !== null && s.delta > 0)
     .sort((a, b) => b.delta - a.delta || b.average - a.average);
+}
+
+
+/**
+ * Matches each player took part in.
+ *
+ * A player counts as having played a match if they were named in its line-up
+ * *or* have a score recorded for it. Requiring the line-up alone left everyone
+ * on zero whenever scores were entered without one being set — which is the
+ * common case, since the line-up picker is optional.
+ *
+ * Counted per match, so three games in one night stay one appearance.
+ */
+function countAppearances(
+  snapshot: LeagueSnapshot,
+  matchIds: ReadonlySet<string>,
+): Map<string, number> {
+  const seen = new Map<string, Set<string>>();
+  const note = (playerId: string, matchId: string) => {
+    const cur = seen.get(playerId) ?? new Set<string>();
+    cur.add(matchId);
+    seen.set(playerId, cur);
+  };
+
+  for (const row of snapshot.lineups) {
+    if (matchIds.has(row.matchId)) note(row.playerId, row.matchId);
+  }
+  for (const row of snapshot.scores) {
+    if (matchIds.has(row.matchId)) note(row.playerId, row.matchId);
+  }
+
+  return new Map([...seen].map(([playerId, matches]) => [playerId, matches.size]));
+}
+
+/** Matches each player took part in, for the season. */
+export function appearances(
+  snapshot: LeagueSnapshot,
+  seasonId: string,
+): Map<string, number> {
+  const weekIds = new Set(snapshot.weeks.filter((w) => w.seasonId === seasonId).map((w) => w.id));
+  const matchIds = new Set(snapshot.matches.filter((m) => weekIds.has(m.weekId)).map((m) => m.id));
+  return countAppearances(snapshot, matchIds);
 }

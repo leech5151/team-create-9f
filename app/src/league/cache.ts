@@ -32,9 +32,13 @@ export function readCache(): CachedSnapshot {
     ) {
       return { snapshot: EMPTY_SNAPSHOT, fetchedAt: null };
     }
-    // `scores` was added later; an older cache entry simply has none.
+    // `lineups`/`scores` were added later; an older cache entry simply has none.
     return {
-      snapshot: { ...s, scores: Array.isArray(s.scores) ? s.scores : [] } as LeagueSnapshot,
+      snapshot: {
+        ...s,
+        lineups: Array.isArray(s.lineups) ? s.lineups : [],
+        scores: Array.isArray(s.scores) ? s.scores : [],
+      } as LeagueSnapshot,
       fetchedAt: typeof parsed.fetchedAt === 'number' ? parsed.fetchedAt : null,
     };
   } catch {

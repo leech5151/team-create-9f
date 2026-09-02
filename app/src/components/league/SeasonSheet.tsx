@@ -20,6 +20,8 @@ interface Props {
     startDate: string,
   ) => Promise<string | null>;
   onDelete?: (season: Season) => Promise<string | null>;
+  /** Toggles whether every screen opens on this 회차. */
+  onSetActive?: (season: Season, active: boolean) => Promise<string | null>;
   onClose: () => void;
 }
 
@@ -29,6 +31,7 @@ export function SeasonSheet({
   suggestedEdition,
   onSave,
   onDelete,
+  onSetActive,
   onClose,
 }: Props) {
   const editing = season !== undefined;
@@ -148,6 +151,38 @@ export function SeasonSheet({
             autoComplete="off"
           />
         </div>
+
+        {editing && season && onSetActive && (
+          <div className="field">
+            <button
+              type="button"
+              className="switchRow"
+              role="switch"
+              aria-checked={season.isActive}
+              disabled={busy}
+              onClick={() => {
+                void (async () => {
+                  setBusy(true);
+                  const message = await onSetActive(season, !season.isActive);
+                  setBusy(false);
+                  setError(message);
+                })();
+              }}
+            >
+              <span className="switchRow__body">
+                <span className="switchRow__title">현재 회차</span>
+                <span className="switchRow__note">
+                  {season.isActive
+                    ? '모든 화면이 이 회차로 열립니다.'
+                    : '켜면 모든 화면이 이 회차로 열립니다.'}
+                </span>
+              </span>
+              <span className={`switch${season.isActive ? ' switch--on' : ''}`}>
+                <span className="switch__knob" />
+              </span>
+            </button>
+          </div>
+        )}
 
         {error && <div className="field__error">{error}</div>}
 

@@ -23,16 +23,32 @@ export interface TableRow {
   totalWins: number;
 }
 
+/**
+ * Who counts as the team for this match: the recorded line-up when there is
+ * one, otherwise the whole squad. League teams are larger than the group that
+ * plays on a given night, so the line-up is the authority once it exists.
+ */
+export function sideRoster(
+  snapshot: LeagueSnapshot,
+  matchId: string,
+  teamId: string,
+  playerById: ReadonlyMap<string, LeaguePlayer>,
+): LeaguePlayer[] {
+  const lineup = snapshot.lineups.filter((l) => l.matchId === matchId && l.teamId === teamId);
+  const ids =
+    lineup.length > 0
+      ? lineup.map((l) => l.playerId)
+      : snapshot.entries.filter((e) => e.teamId === teamId).map((e) => e.playerId);
+  return ids.map((id) => playerById.get(id)).filter((p): p is LeaguePlayer => p !== undefined);
+}
+
 function sideOf(
   snapshot: LeagueSnapshot,
   match: Match,
   teamId: string,
   playerById: ReadonlyMap<string, LeaguePlayer>,
 ): SideInput | null {
-  const roster = snapshot.entries
-    .filter((e) => e.teamId === teamId)
-    .map((e) => playerById.get(e.playerId))
-    .filter((p): p is LeaguePlayer => p !== undefined);
+  const roster = sideRoster(snapshot, match.id, teamId, playerById);
   if (roster.length === 0) return null;
 
   const ids = new Set(roster.map((p) => p.id));

@@ -31,6 +31,7 @@ export interface SeasonEntry {
   seasonId: string;
   playerId: string;
   teamId: string | null;
+  isCaptain: boolean;
 }
 
 export interface Week {
@@ -54,6 +55,13 @@ export interface Match {
   startTime: string | null;
 }
 
+/** Who actually bowled for a team in a given match. */
+export interface LineupRow {
+  matchId: string;
+  teamId: string;
+  playerId: string;
+}
+
 /** One player's score in one game of a match. */
 export interface GameScoreRow {
   matchId: string;
@@ -69,6 +77,7 @@ export interface LeagueSnapshot {
   entries: SeasonEntry[];
   weeks: Week[];
   matches: Match[];
+  lineups: LineupRow[];
   scores: GameScoreRow[];
 }
 
@@ -79,6 +88,7 @@ export const EMPTY_SNAPSHOT: LeagueSnapshot = {
   entries: [],
   weeks: [],
   matches: [],
+  lineups: [],
   scores: [],
 };
 
@@ -106,19 +116,20 @@ export async function fetchSnapshot(): Promise<LeagueSnapshot> {
   const db = client();
 
   // Small tables; one round trip each, in parallel.
-  const [seasons, players, teams, entries, weeks, matches, scores] = await Promise.all([
+  const [seasons, players, teams, entries, weeks, matches, lineups, scores] = await Promise.all([
     db
       .from('seasons')
       .select('id,edition,title,total_weeks,is_active,start_date')
-      .order('edition', { ascending: false }),
+      .order('edition', { ascending: true }),
     db.from('players').select('id,name,gender,handicap,penalty,avg').order('name'),
     db.from('teams').select('id,season_id,name,sort_order').order('sort_order'),
-    db.from('season_players').select('season_id,player_id,team_id'),
+    db.from('season_players').select('season_id,player_id,team_id,is_captain'),
     db.from('weeks').select('id,season_id,week_no,played_on').order('week_no'),
     db
       .from('matches')
       .select('id,week_id,home_team_id,away_team_id,lane_no,played_on,start_time')
       .order('played_on'),
+    db.from('match_players').select('match_id,team_id,player_id'),
     db.from('game_scores').select('match_id,player_id,game_no,pins'),
   ]);
 
@@ -149,6 +160,7 @@ export async function fetchSnapshot(): Promise<LeagueSnapshot> {
       seasonId: r.season_id,
       playerId: r.player_id,
       teamId: r.team_id,
+      isCaptain: r.is_captain ?? false,
     })),
     weeks: check(weeks).map((r) => ({
       id: r.id,
@@ -165,6 +177,11 @@ export async function fetchSnapshot(): Promise<LeagueSnapshot> {
       playedOn: r.played_on,
       // Postgres returns `HH:MM:SS`; the UI only ever deals in `HH:MM`.
       startTime: r.start_time ? String(r.start_time).slice(0, 5) : null,
+    })),
+    lineups: check(lineups).map((r) => ({
+      matchId: r.match_id,
+      teamId: r.team_id,
+      playerId: r.player_id,
     })),
     scores: check(scores).map((r) => ({
       matchId: r.match_id,
@@ -293,6 +310,25 @@ export async function updateSeason(
   }
 }
 
+/**
+ * Turns the "current 회차" flag on or off.
+ *
+ * Screens open on whichever season is current, so at most one may carry it —
+ * switching one on clears the others first, which also avoids a moment where
+ * two are flagged. Switching off leaves none, and screens fall back to 1회.
+ */
+export async function setSeasonActive(id: string, active: boolean): Promise<void> {
+  const db = client();
+
+  if (active) {
+    const cleared = await db.from('seasons').update({ is_active: false }).neq('id', id);
+    if (cleared.error) throw new Error(cleared.error.message);
+  }
+
+  const { error } = await db.from('seasons').update({ is_active: active }).eq('id', id);
+  if (error) throw new Error(error.message);
+}
+
 export async function deleteSeason(id: string): Promise<void> {
   const { error } = await client().from('seasons').delete().eq('id', id);
   if (error) throw new Error(error.message);
@@ -362,6 +398,42 @@ export async function updateTeam(
     { onConflict: 'season_id,player_id' },
   );
   if (error) throw new Error(error.message);
+}
+
+/**
+ * Replaces every team in a season with a freshly composed set.
+ *
+ * Deleting the old teams cascades to their fixtures, so callers must confirm
+ * first — this is the "re-draw the whole season" action, not an edit.
+ */
+export async function replaceTeams(
+  seasonId: string,
+  teams: readonly { name: string; playerIds: readonly string[] }[],
+): Promise<void> {
+  const db = client();
+
+  const cleared = await db.from('teams').delete().eq('season_id', seasonId);
+  if (cleared.error) throw new Error(cleared.error.message);
+
+  for (const [index, team] of teams.entries()) {
+    const inserted = await db
+      .from('teams')
+      .insert({ season_id: seasonId, name: team.name, sort_order: index })
+      .select('id')
+      .single();
+    if (inserted.error) throw new Error(inserted.error.message);
+
+    if (team.playerIds.length === 0) continue;
+    const { error } = await db.from('season_players').upsert(
+      team.playerIds.map((playerId) => ({
+        season_id: seasonId,
+        player_id: playerId,
+        team_id: inserted.data.id as string,
+      })),
+      { onConflict: 'season_id,player_id' },
+    );
+    if (error) throw new Error(error.message);
+  }
 }
 
 export async function deleteTeam(id: string): Promise<void> {
@@ -464,4 +536,129 @@ export async function saveGameScores(
       .in('game_no', games);
     if (error) throw new Error(error.message);
   }
+}
+
+
+// ── 팀짜기: writes land immediately, so a draw survives leaving the screen ──
+
+/** Replaces the season's teams with `count` empty ones, named 1팀, 2팀, … */
+export async function createEmptyTeams(seasonId: string, count: number): Promise<void> {
+  const db = client();
+
+  const cleared = await db.from('teams').delete().eq('season_id', seasonId);
+  if (cleared.error) throw new Error(cleared.error.message);
+
+  const rows = Array.from({ length: count }, (_, i) => ({
+    season_id: seasonId,
+    name: `${i + 1}팀`,
+    sort_order: i,
+  }));
+  const { error } = await db.from('teams').insert(rows);
+  if (error) throw new Error(error.message);
+}
+
+/**
+ * Adds one empty team without touching the others.
+ *
+ * Team names are `N팀`, numbered past whatever already exists so a deletion
+ * cannot produce a duplicate name.
+ */
+export async function appendTeam(seasonId: string, existingNames: readonly string[]): Promise<void> {
+  const used = new Set(existingNames);
+  let n = 1;
+  while (used.has(`${n}팀`)) n += 1;
+
+  const { error } = await client()
+    .from('teams')
+    .insert({ season_id: seasonId, name: `${n}팀`, sort_order: n });
+  if (error) throw new Error(error.message);
+}
+
+/** Puts a player on a team (or takes them off with `teamId: null`). */
+export async function assignPlayer(
+  seasonId: string,
+  playerId: string,
+  teamId: string | null,
+): Promise<void> {
+  const { error } = await client().from('season_players').upsert(
+    // Leaving a team gives up the armband with it.
+    { season_id: seasonId, player_id: playerId, team_id: teamId, is_captain: false },
+    { onConflict: 'season_id,player_id' },
+  );
+  if (error) throw new Error(error.message);
+}
+
+/**
+ * Makes a player the captain of a team, joining them to it if needed.
+ *
+ * The previous captain is demoted first — the unique index allows only one per
+ * team, so writing the new one first would be rejected.
+ */
+export async function setCaptain(
+  seasonId: string,
+  teamId: string,
+  playerId: string,
+): Promise<void> {
+  const db = client();
+
+  const demoted = await db
+    .from('season_players')
+    .update({ is_captain: false })
+    .eq('season_id', seasonId)
+    .eq('team_id', teamId);
+  if (demoted.error) throw new Error(demoted.error.message);
+
+  const { error } = await db.from('season_players').upsert(
+    { season_id: seasonId, player_id: playerId, team_id: teamId, is_captain: true },
+    { onConflict: 'season_id,player_id' },
+  );
+  if (error) throw new Error(error.message);
+}
+
+/** Steps a player down without removing them from the team. */
+export async function clearCaptain(seasonId: string, playerId: string): Promise<void> {
+  const { error } = await client()
+    .from('season_players')
+    .update({ is_captain: false })
+    .eq('season_id', seasonId)
+    .eq('player_id', playerId);
+  if (error) throw new Error(error.message);
+}
+
+
+/**
+ * Replaces one team's line-up for a match.
+ *
+ * League teams carry more players than take part on any given night, so who
+ * actually bowls is decided per match. Scores for players dropped from the
+ * line-up are removed too — otherwise they would keep counting toward a match
+ * they no longer played in.
+ */
+export async function setLineup(
+  matchId: string,
+  teamId: string,
+  playerIds: readonly string[],
+): Promise<void> {
+  const db = client();
+
+  const cleared = await db
+    .from('match_players')
+    .delete()
+    .eq('match_id', matchId)
+    .eq('team_id', teamId);
+  if (cleared.error) throw new Error(cleared.error.message);
+
+  if (playerIds.length > 0) {
+    const { error } = await db
+      .from('match_players')
+      .insert(playerIds.map((playerId) => ({ match_id: matchId, team_id: teamId, player_id: playerId })));
+    if (error) throw new Error(error.message);
+  }
+
+  const stale = await db
+    .from('game_scores')
+    .delete()
+    .eq('match_id', matchId)
+    .not('player_id', 'in', `(${playerIds.length > 0 ? playerIds.join(',') : '00000000-0000-0000-0000-000000000000'})`);
+  if (stale.error) throw new Error(stale.error.message);
 }

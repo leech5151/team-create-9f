@@ -1,6 +1,7 @@
 import type { LeagueSnapshot } from '../../league/api';
 import type { LoadState } from '../../league/useLeague';
 import type { LeaguePlayer } from '../../league/types';
+import { appearances } from '../../league/playerStats';
 import {
   groupByTier,
   scoreBreakdown,
@@ -22,6 +23,9 @@ interface Props {
 
 export function PlayersTab({ snapshot, state, error, isAdmin, onAdd, onEdit, onRetry }: Props) {
   const { players } = snapshot;
+  // Appearances are per 회차; the newest season is the one people ask about.
+  const activeSeason = snapshot.seasons[0] ?? null;
+  const played = activeSeason ? appearances(snapshot, activeSeason.id) : new Map<string, number>();
   const { tiers, unranked } = groupByTier(players);
   const ranked = players.length - unranked.length;
   const stats = scoreStats(players);
@@ -38,6 +42,10 @@ export function PlayersTab({ snapshot, state, error, isAdmin, onAdd, onEdit, onR
         <div className="memberRow__name">{p.name}</div>
         <div className="memberRow__gender">{p.gender ?? '—'}</div>
         <ScoreCell player={p} />
+        <div className="memberRow__caps" title="출전 경기 수">
+          {played.get(p.id) ?? 0}
+          <em>경기</em>
+        </div>
         {isAdmin && <div className="memberRow__edit">수정</div>}
       </button>
     </div>

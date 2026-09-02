@@ -84,6 +84,19 @@ input {
   }
 }
 
+/* Each flicked name lands with a tiny bounce, so the roll reads as motion
+   rather than text quietly swapping. */
+@keyframes slotTick {
+  from {
+    transform: translateY(-22%) scale(0.94);
+    opacity: 0.35;
+  }
+  to {
+    transform: none;
+    opacity: 1;
+  }
+}
+
 @keyframes slideUp {
   from {
     transform: translateY(100%);
@@ -763,6 +776,24 @@ input {
   color: #4a4f57;
 }
 
+.memberRow__caps {
+  flex: none;
+  min-width: 34px;
+  text-align: right;
+  font-size: 12px;
+  font-weight: 800;
+  color: #4a4f57;
+  font-variant-numeric: tabular-nums;
+}
+
+.memberRow__caps em {
+  font-style: normal;
+  font-size: 9.5px;
+  font-weight: 700;
+  color: #a8adb4;
+  margin-left: 1px;
+}
+
 .memberRow__edit {
   font-size: 11px;
   font-weight: 800;
@@ -1201,6 +1232,76 @@ input {
     gap: 18px;
     align-items: start;
   }
+}
+
+/* ── Switch row ────────────────────────────────────────────── */
+
+.switchRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 13px 14px;
+  border-radius: 14px;
+  background: #fff;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  text-align: left;
+}
+
+.switchRow:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+.switchRow__body {
+  flex: 1;
+  min-width: 0;
+}
+
+.switchRow__title {
+  display: block;
+  font-size: 14px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+.switchRow__note {
+  display: block;
+  margin-top: 2px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #8a8f98;
+  line-height: 1.4;
+}
+
+.switch {
+  flex: none;
+  width: 46px;
+  height: 28px;
+  border-radius: 999px;
+  background: #d8d6d1;
+  position: relative;
+  transition: background 0.18s ease;
+}
+
+.switch--on {
+  background: #0e9d8b;
+}
+
+.switch__knob {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  background: #fff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+  transition: transform 0.18s ease;
+}
+
+.switch--on .switch__knob {
+  transform: translateX(18px);
 }
 
 /* ── League: 회차 / 주차 pickers ───────────────────────────── */
@@ -1859,6 +1960,262 @@ input {
   color: #0e9d8b;
 }
 
+/* ── League draw: captains and hand-placed picks ───────────── */
+
+.teamChip--empty {
+  border-style: dashed;
+  border-color: rgba(0, 0, 0, 0.16);
+  background: transparent;
+}
+
+.teamChip__none {
+  color: #b7bbc1;
+  font-weight: 700;
+}
+
+.captainPickList {
+  margin-top: 12px;
+  max-height: 46vh;
+  overflow-y: auto;
+}
+
+/* The drawn player sits on a dark panel so it reads as the current turn. */
+.drawPanel {
+  margin-top: 14px;
+  padding: 20px 18px;
+  border-radius: 18px;
+  background: #14161a;
+  color: #fff;
+  text-align: center;
+  animation: riseIn 0.24s ease both;
+}
+
+.drawPanel__label {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.drawPanel__name {
+  margin-top: 6px;
+  font-size: 32px;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+}
+
+.drawPanel__name--spin {
+  animation: slotTick 0.07s linear;
+  color: #ff7a5c;
+}
+
+.drawPanel__meta {
+  margin-top: 4px;
+  font-size: 12px;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.6);
+  font-variant-numeric: tabular-nums;
+}
+
+/* All three share a height and type scale so the row lines up. */
+.drawPanel__cta,
+.drawPanel__ghost {
+  height: 48px;
+  padding: 0 12px;
+  border-radius: 14px;
+  font-size: 15px;
+  font-weight: 800;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+
+.drawPanel__cta {
+  margin-top: 12px;
+  background: #ff4a21;
+  color: #fff;
+}
+
+.drawPanel__cta:disabled {
+  background: rgba(255, 255, 255, 0.14);
+  cursor: default;
+}
+
+.drawPanel__actions {
+  display: flex;
+  align-items: stretch;
+  gap: 8px;
+  justify-content: center;
+  margin-top: 12px;
+}
+
+/* The action row supplies the top margin; the buttons must not add their own. */
+.drawPanel__actions .drawPanel__cta {
+  margin-top: 0;
+}
+
+/* Three buttons share the row evenly rather than sizing to their labels. */
+.drawPanel__actions > button {
+  flex: 1;
+  min-width: 0;
+}
+
+.drawPanel--result {
+  border: 1px solid rgba(255, 122, 92, 0.35);
+}
+
+.drawPanel--result .drawPanel__label {
+  color: #ff7a5c;
+}
+
+.resultRoster {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
+  font-size: 12px;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.7);
+  line-height: 1.5;
+}
+
+.deferBox {
+  margin-top: 14px;
+  padding: 11px 13px;
+  border-radius: 12px;
+  background: #fff1ec;
+  border: 1px solid rgba(255, 74, 33, 0.2);
+}
+
+.deferBox__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 11.5px;
+  font-weight: 800;
+  color: #c93a16;
+}
+
+.deferBox__names {
+  margin-top: 5px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #6b6f76;
+  line-height: 1.5;
+}
+
+.drawPanel__ghost {
+  background: rgba(255, 255, 255, 0.12);
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.drawPanel__ghost:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+/* ── Claim sheet ───────────────────────────────────────────── */
+
+.claimList {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  margin-top: 14px;
+}
+
+.claimRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 13px 14px;
+  border-radius: 14px;
+  background: #fff;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  text-align: left;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.claimRow--on {
+  border-color: #ff4a21;
+  background: #fffaf8;
+}
+
+.claimRow:not(:disabled):hover {
+  border-color: #ff4a21;
+  background: #fffaf8;
+}
+
+.claimRow:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.claimRow__body {
+  flex: 1;
+  min-width: 0;
+}
+
+.claimRow__name {
+  display: block;
+  font-size: 15px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+.claimRow__members {
+  display: block;
+  margin-top: 2px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #a8adb4;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.claimRow__count {
+  flex: none;
+  font-size: 13px;
+  font-weight: 800;
+  color: #ff4a21;
+  font-variant-numeric: tabular-nums;
+}
+
+/* In-sheet progress, so a write in flight does not look like a dead tap. */
+.sheetBusy {
+  margin-top: 10px;
+  padding: 8px 12px;
+  border-radius: 10px;
+  background: #fff1ec;
+  color: #c93a16;
+  font-size: 11.5px;
+  font-weight: 800;
+  text-align: center;
+}
+
+.memberRow__del:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.teamChip--full {
+  opacity: 0.55;
+}
+
+.captainMark {
+  display: inline-block;
+  margin-right: 4px;
+  padding: 0 4px;
+  border-radius: 5px;
+  background: #ff4a21;
+  color: #fff;
+  font-style: normal;
+  font-size: 9px;
+  font-weight: 800;
+}
+
 /* ── League: individual records (MVP · 에버 향상) ───────────── */
 
 .statList {
@@ -2121,6 +2478,22 @@ input {
   font-weight: 800;
   color: #ff4a21;
   flex: none;
+}
+
+.teamChip__sum {
+  font-size: 12px;
+  font-weight: 800;
+  color: #ff4a21;
+  font-variant-numeric: tabular-nums;
+}
+
+.draftMember {
+  display: block;
+  margin-top: 2px;
+  font-size: 11.5px;
+  font-weight: 700;
+  color: #4a4f57;
+  font-variant-numeric: tabular-nums;
 }
 
 .teamChip__players {

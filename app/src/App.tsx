@@ -69,6 +69,8 @@ export default function App() {
   const installPrompt = useInstallPrompt();
   const auth = useAdminAuth();
   const [loginOpen, setLoginOpen] = useState(false);
+  // Not persisted: entering 상주리그 always lands on 메인.
+  const [leagueTabState, setLeagueTabState] = useState<LeagueTab>('main');
 
   useEffect(() => saveState(state), [state]);
 
@@ -296,8 +298,10 @@ export default function App() {
   };
 
   // ── Section navigation ─────────────────────────────────────
-  const openSection = (section: Exclude<Section, 'home'>) =>
+  const openSection = (section: Exclude<Section, 'home'>) => {
+    if (section === 'league') setLeagueTabState('main');
     setState((s) => ({ ...s, section }));
+  };
 
   /** Back out to the hub. Any draw in progress is kept, not discarded. */
   const goHome = () => {
@@ -305,7 +309,7 @@ export default function App() {
     setState((s) => ({ ...s, section: 'home' }));
   };
 
-  const goLeagueTab = (leagueTab: LeagueTab) => setState((s) => ({ ...s, leagueTab }));
+  const goLeagueTab = (leagueTab: LeagueTab) => setLeagueTabState(leagueTab);
 
   const goTab = (key: 'roster' | 'draw' | 'history') => {
     const target: Screen = key === 'draw' && lanes.length === 0 ? 'roster' : key;
@@ -412,8 +416,8 @@ export default function App() {
    * Signing out while 경기설정 is open would leave a tab selected that no longer
    * exists, so fall back to the first visible one.
    */
-  const leagueTab = visibleLeagueTabs.some((t) => t.key === state.leagueTab)
-    ? state.leagueTab
+  const leagueTab = visibleLeagueTabs.some((t) => t.key === leagueTabState)
+    ? leagueTabState
     : (visibleLeagueTabs[0]?.key ?? 'main');
   const boardMode = teams && state.screen === 'result' && state.resultView === 'board';
 
@@ -423,8 +427,14 @@ export default function App() {
     meta?.setAttribute('content', boardMode ? '#0F1115' : '#F4F3F0');
   }, [boardMode]);
 
-  // Only on 명단: it is the home screen, and the other screens are mid-task.
-  const showInstall = state.section === 'home' && installPrompt.installable;
+  /**
+   * Only on the hub. Inside a feature the operator is mid-task, and the app bar
+   * there already carries a back action — an install prompt would compete with
+   * it. Dismissing only collapses the banner to a pill, so the entry point
+   * stays available rather than disappearing for good.
+   */
+  const showInstall = installPrompt.installable && state.section === 'home';
+  const showInstallBanner = showInstall && !installPrompt.collapsed;
 
   return (
     <div className="app" data-dark={boardMode}>
@@ -441,12 +451,16 @@ export default function App() {
             </button>
           )}
           <div className="appBar__right">
-            {showInstall && installPrompt.collapsed && (
+            {showInstall && !showInstallBanner && (
               <InstallPill
-                onClick={() =>
-                  // Chromium can go straight to the dialog; iOS needs the instructions.
-                  installPrompt.canPrompt ? void installPrompt.install() : installPrompt.expand()
-                }
+                onClick={() => {
+                  // Chromium can go straight to the dialog; elsewhere the banner
+                  // has to explain where the browser hides the menu item.
+                  // Chromium can open its dialog; elsewhere the banner has to
+                  // explain where the browser hides the menu item.
+                  if (installPrompt.canPrompt) void installPrompt.install();
+                  else installPrompt.expand();
+                }}
               />
             )}
             {auth.ready &&
@@ -471,9 +485,10 @@ export default function App() {
           </div>
         </div>
 
-        {showInstall && !installPrompt.collapsed && (
+        {showInstallBanner && (
           <InstallBanner
             canPrompt={installPrompt.canPrompt}
+            isIos={installPrompt.isIos}
             onInstall={() => void installPrompt.install()}
             onCollapse={installPrompt.collapse}
           />
@@ -547,7 +562,12 @@ export default function App() {
         )}
 
         {league && (
-          <LeagueScreen tab={leagueTab} isAdmin={auth.isAdmin} onNotify={flash} />
+          <LeagueScreen
+            tab={leagueTab}
+            onGoTab={goLeagueTab}
+            isAdmin={auth.isAdmin}
+            onNotify={flash}
+          />
         )}
       </div>
 

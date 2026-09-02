@@ -1,9 +1,17 @@
-import type { LeagueSnapshot, Match, Season, Team, Week } from '../../league/api';
+import { useState } from 'react';
+import type { LeagueSnapshot, Match, Season, Week } from '../../league/api';
 import type { LeaguePlayer } from '../../league/types';
 import type { LoadState } from '../../league/useLeague';
 import { orderRoster, teamScore, TIER_META, type TeamScore } from '../../league/tiers';
 import type { TieredPlayer } from '../../league/tiers';
-import { isCurrentWeek, parseDate, shortDate, weekRange } from '../../league/schedule';
+import {
+  isCurrentWeek,
+  parseDate,
+  shortDate,
+  WEEKDAYS,
+  weekdayOf,
+  weekRange,
+} from '../../league/schedule';
 import {
   OUTCOME_LABEL,
   outcomeFor,
@@ -23,9 +31,10 @@ interface Props {
   onPickWeek: (id: string) => void;
   onCreateSeason: () => void;
   onEditSeason: (season: Season) => void;
-  onCreateTeam: () => void;
-  onEditTeam: (team: Team) => void;
+  /** Sends the operator to the 팀짜기 tab, which now owns team composition. */
+  onGoDraw: () => void;
   onCreateMatch: () => void;
+  onLineupMatch: (match: Match) => void;
   onRecordMatch: (match: Match) => void;
   onEditMatch: (match: Match) => void;
   onRetry: () => void;
@@ -46,19 +55,21 @@ export function PlayTab({
   onPickWeek,
   onCreateSeason,
   onEditSeason,
-  onCreateTeam,
-  onEditTeam,
+  onGoDraw,
   onCreateMatch,
+  onLineupMatch,
   onRecordMatch,
   onEditMatch,
   onRetry,
 }: Props) {
   const { seasons, teams, weeks, entries, players } = snapshot;
+  /** null = 전체; otherwise a day index (0 = Sunday). */
+  const [weekday, setWeekday] = useState<number | null>(null);
 
   const seasonTeams = season ? teams.filter((t) => t.seasonId === season.id) : [];
   const seasonWeeks = season ? weeks.filter((w) => w.seasonId === season.id) : [];
   // Chronological: by date, then lane, so the board reads like the night runs.
-  const weekMatches = week
+  const weekMatchesAll = week
     ? snapshot.matches
         .filter((m) => m.weekId === week.id)
         .slice()
@@ -70,24 +81,40 @@ export function PlayTab({
             (a.laneNo ?? Infinity) - (b.laneNo ?? Infinity),
         )
     : [];
+  const weekMatches =
+    weekday === null
+      ? weekMatchesAll
+      : weekMatchesAll.filter((m) => weekdayOf(m.playedOn) === weekday);
 
   const playerById = new Map(players.map((p) => [p.id, p] as const));
-  /** Rosters always read 골드 → 실버 → 브론즈. */
-  const rosterOf = (teamId: string): TieredPlayer[] =>
-    orderRoster(
-      entries
-        .filter((e) => e.teamId === teamId)
-        .map((e) => playerById.get(e.playerId))
-        .filter((p): p is LeaguePlayer => p !== undefined),
+  /**
+   * Who to show for a team in a fixture: the recorded line-up, or the whole
+   * squad before one is set. Always ordered 골드 → 실버 → 브론즈.
+   */
+  const rosterOf = (teamId: string, matchId?: string): TieredPlayer[] => {
+    const lineup = matchId
+      ? snapshot.lineups.filter((l) => l.matchId === matchId && l.teamId === teamId)
+      : [];
+    const ids =
+      lineup.length > 0
+        ? lineup.map((l) => l.playerId)
+        : entries.filter((e) => e.teamId === teamId).map((e) => e.playerId);
+    return orderRoster(
+      ids.map((id) => playerById.get(id)).filter((p): p is LeaguePlayer => p !== undefined),
       players,
     );
+  };
 
   const teamName = (id: string) => teams.find((t) => t.id === id)?.name ?? '삭제된 팀';
 
   /** Completed results, so a played fixture can show 승리/패배. */
   const results = season ? resultByMatch(snapshot, season.id) : new Map();
 
-  /** How many of the 18 score slots a fixture already has filled. */
+  /** How many players are named in a fixture's line-up. */
+  const lineupCount = (matchId: string) =>
+    snapshot.lineups.filter((l) => l.matchId === matchId).length;
+
+  /** How many score slots a fixture already has filled. */
   const recordedCount = (matchId: string) =>
     snapshot.scores.filter((s) => s.matchId === matchId).length;
 
@@ -134,6 +161,7 @@ export function PlayTab({
                   onClick={() => onPickSeason(s.id)}
                 >
                   {s.edition}회
+                  {s.isActive && <span className="chip__now">현재</span>}
                 </button>
               ))}
               {isAdmin && season && (
@@ -174,6 +202,35 @@ export function PlayTab({
                     >
                       {w.weekNo}주
                       {now && <span className="chip__now">이번주</span>}
+                      {count > 0 && <span className="chip__badge">{count}</span>}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {seasonWeeks.length > 0 && (
+            <div className="pickRow">
+              <span className="pickRow__label">요일</span>
+              <div className="pickRow__chips">
+                <button
+                  type="button"
+                  className={`chip${weekday === null ? ' chip--on' : ''}`}
+                  onClick={() => setWeekday(null)}
+                >
+                  전체
+                </button>
+                {WEEKDAYS.map((w) => {
+                  const count = weekMatchesAll.filter((m) => weekdayOf(m.playedOn) === w.day).length;
+                  return (
+                    <button
+                      type="button"
+                      key={w.day}
+                      className={`chip${weekday === w.day ? ' chip--on' : ''}`}
+                      onClick={() => setWeekday(weekday === w.day ? null : w.day)}
+                    >
+                      {w.label}
                       {count > 0 && <span className="chip__badge">{count}</span>}
                     </button>
                   );
@@ -231,8 +288,8 @@ export function PlayTab({
                 대진을 만들려면 팀이 2개 이상 필요합니다. 현재 {seasonTeams.length}팀.
               </div>
               {isAdmin && (
-                <button type="button" className="blank__cta" onClick={onCreateTeam}>
-                  팀 만들기
+                <button type="button" className="blank__cta" onClick={onGoDraw}>
+                  팀짜기로 이동
                 </button>
               )}
             </div>
@@ -243,16 +300,17 @@ export function PlayTab({
                   <button type="button" className="addMemberBtn" onClick={onCreateMatch}>
                     <span className="addMemberBtn__plus">+</span> 대진 추가
                   </button>
-                  <button type="button" className="rosterTools__toggle" onClick={onCreateTeam}>
-                    팀 추가
-                  </button>
                 </div>
               )}
 
               {weekMatches.length === 0 ? (
                 <div className="blank">
                   <div className="blank__title">
-                    {week ? `${week.weekNo}주차 대진이 없어요` : '주차를 선택해 주세요'}
+                    {!week
+                      ? '주차를 선택해 주세요'
+                      : weekday !== null && weekMatchesAll.length > 0
+                        ? '이 요일에는 대진이 없어요'
+                        : `${week.weekNo}주차 대진이 없어요`}
                   </div>
                   <div className="blank__sub">
                     {isAdmin
@@ -278,6 +336,17 @@ export function PlayTab({
                           <span className="fixture__actions">
                             <button
                               type="button"
+                              className={`fixture__edit${lineupCount(m.id) > 0 ? ' fixture__edit--done' : ''}`}
+                              onClick={() => onLineupMatch(m)}
+                              aria-label="출전 선수"
+                            >
+                              출전
+                              {lineupCount(m.id) > 0 && (
+                                <em className="fixture__badge">{lineupCount(m.id)}</em>
+                              )}
+                            </button>
+                            <button
+                              type="button"
                               className={`fixture__edit${recordedCount(m.id) > 0 ? ' fixture__edit--done' : ''}`}
                               onClick={() => onRecordMatch(m)}
                               aria-label="경기 기록"
@@ -301,14 +370,14 @@ export function PlayTab({
                       <div className="fixture__body">
                         <FixtureSide
                           name={teamName(m.homeTeamId)}
-                          roster={rosterOf(m.homeTeamId)}
+                          roster={rosterOf(m.homeTeamId, m.id)}
                           outcome={results.has(m.id) ? outcomeFor(results.get(m.id)!, true) : null}
                           points={results.has(m.id) ? pointsFor(results.get(m.id)!, true) : null}
                         />
                         <div className="fixture__vs">VS</div>
                         <FixtureSide
                           name={teamName(m.awayTeamId)}
-                          roster={rosterOf(m.awayTeamId)}
+                          roster={rosterOf(m.awayTeamId, m.id)}
                           outcome={results.has(m.id) ? outcomeFor(results.get(m.id)!, false) : null}
                           points={results.has(m.id) ? pointsFor(results.get(m.id)!, false) : null}
                         />
@@ -320,22 +389,6 @@ export function PlayTab({
             </>
           )}
 
-          {seasonTeams.length > 0 && (
-            <>
-              <div className="sectionLabel">팀 구성</div>
-              <div className="teamStrip">
-                {seasonTeams.map((t) => (
-                  <TeamChip
-                    key={t.id}
-                    team={t}
-                    roster={rosterOf(t.id)}
-                    editable={isAdmin}
-                    onEdit={() => onEditTeam(t)}
-                  />
-                ))}
-              </div>
-            </>
-          )}
         </>
       )}
     </div>
@@ -397,38 +450,5 @@ function FixtureSide({ name, roster, outcome, points }: {
         )}
       </div>
     </div>
-  );
-}
-
-function TeamChip({
-  team,
-  roster,
-  editable,
-  onEdit,
-}: {
-  team: Team;
-  roster: readonly TieredPlayer[];
-  editable: boolean;
-  onEdit: () => void;
-}) {
-  const body = (
-    <>
-      <div className="teamChip__head">
-        <span className="teamChip__name">{team.name}</span>
-        {editable && <span className="teamChip__edit">수정</span>}
-      </div>
-      <TotalLine score={teamScore(roster)} />
-      <div className="teamChip__players">
-        {roster.length === 0 ? '미배정' : roster.map((p) => p.name).join(' · ')}
-      </div>
-    </>
-  );
-
-  return editable ? (
-    <button type="button" className="teamChip teamChip--btn" onClick={onEdit}>
-      {body}
-    </button>
-  ) : (
-    <div className="teamChip">{body}</div>
   );
 }

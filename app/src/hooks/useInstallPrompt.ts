@@ -104,8 +104,15 @@ export function useInstallPrompt() {
     canPrompt: deferred !== null,
     /** iOS needs Share-sheet instructions instead of a dialog. */
     isIos: ios,
-    /** Whether any install path exists on this browser. */
-    installable: !installed && (deferred !== null || ios),
+    /**
+     * Shown whenever the app is not already running standalone.
+     *
+     * Deliberately not gated on `beforeinstallprompt`: that event only fires on
+     * Chromium, and only once its engagement heuristics are satisfied, so
+     * gating on it left most browsers with no way in at all. Without a deferred
+     * prompt the banner falls back to telling the user where the menu item is.
+     */
+    installable: !installed,
     installed,
     collapsed,
     collapse,
