@@ -2488,40 +2488,79 @@ input {
 
 .ltable {
   width: 100%;
+  /*
+   * Fixed layout is what keeps the card from scrolling sideways on a phone:
+   * the numeric columns get the widths below and 팀 takes whatever is left,
+   * so the table can never grow past its container no matter how long a
+   * team name or roster line gets.
+   */
+  table-layout: fixed;
   border-collapse: collapse;
   font-variant-numeric: tabular-nums;
 }
 
 .ltable th,
 .ltable td {
-  padding: 9px 6px;
+  padding: 9px 3px;
   text-align: center;
   font-size: 11.5px;
   font-weight: 700;
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* 경기 · 게임승 · 총점승 — sized to their headers, which are the widest text. */
+.ltable__g {
+  width: 28px;
+}
+
+.ltable__w {
+  width: 38px;
 }
 
 .ltable thead th {
   background: #f7f6f3;
   color: #8a8f98;
-  font-size: 10.5px;
+  font-size: 10px;
   font-weight: 800;
   border-bottom: 1px solid rgba(0, 0, 0, 0.06);
 }
 
-.ltable tbody tr + tr td {
+/* One separator per team block, not between a team and its own roster line. */
+.ltable__rosterRow + tr td {
   border-top: 1px solid rgba(0, 0, 0, 0.05);
 }
 
+.ltable__rosterRow td {
+  padding: 0 8px 9px 30px;
+  text-align: left;
+}
+
 .ltable__rank {
-  width: 26px;
+  width: 22px;
   color: #8a8f98;
   font-weight: 800;
 }
 
 .ltable__team {
   text-align: left;
-  padding-left: 10px;
+  padding-left: 8px;
+}
+
+/*
+ * Never clip a name. The team cell wraps, and the roster line gets the whole
+ * row below, so both always show in full. `keep-all` breaks at the ` · `
+ * separators rather than mid-name.
+ */
+.ltable__team,
+.ltable__name,
+.ltable__roster {
+  white-space: normal;
+  overflow: visible;
+  text-overflow: clip;
+  word-break: keep-all;
+  overflow-wrap: anywhere;
 }
 
 .ltable__name {
@@ -2532,20 +2571,59 @@ input {
 }
 
 .ltable__roster {
-  margin-top: 2px;
-  font-size: 10px;
+  display: block;
+  font-size: 10.5px;
   font-weight: 600;
+  line-height: 1.45;
   color: #a8adb4;
 }
 
 .ltable__pts {
+  width: 32px;
   font-size: 14px;
   font-weight: 800;
   color: #ff4a21;
 }
 
 .ltable__pins {
+  width: 48px;
   color: #6b6f76;
+}
+
+/*
+ * Narrow phones: smaller header type lets every numeric column give a few
+ * pixels back to 팀, which is the column that actually needs the room.
+ * Widths still sum well under the card, so nothing scrolls.
+ */
+@media (max-width: 380px) {
+  .ltable thead th {
+    font-size: 9.5px;
+  }
+
+  .ltable th,
+  .ltable td {
+    padding: 9px 2px;
+  }
+
+  .ltable__rank {
+    width: 20px;
+  }
+
+  .ltable__g {
+    width: 26px;
+  }
+
+  .ltable__w {
+    width: 36px;
+  }
+
+  .ltable__pts {
+    width: 30px;
+  }
+
+  .ltable__pins {
+    width: 45px;
+  }
 }
 
 /* Top three carry a tint only once results exist — an all-zero table has no
