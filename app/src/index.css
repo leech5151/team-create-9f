@@ -753,7 +753,7 @@ input {
   grid-template-columns:
     minmax(0, 1.4fr) minmax(0, 0.7fr) minmax(0, 0.9fr) minmax(0, 1.5fr);
   column-gap: 6px;
-  padding: 11px 12px;
+  padding: 11px 14px;
   text-align: center;
 }
 
@@ -763,9 +763,13 @@ input {
     minmax(0, 1.4fr) minmax(0, 0.7fr) minmax(0, 0.9fr) minmax(0, 1.5fr) 26px;
 }
 
-/* 이름만 왼쪽 정렬 — 나머지는 자기 열 가운데. */
+/*
+ * x 에서 시작해야 훑어보기 좋아서 가운데 정렬은 하지 않고, 대신 카드
+ * 모서리에 붙지 않도록 안쪽으로 조금 들여 놓는다.
+ */
 .memberRow__main--players .memberRow__name {
-  text-align: left;
+  text-align: center;
+  padding-left: 6px;
 }
 
 /* 폭은 그리드가 정한다 — flex 시절의 고정 폭·오른쪽 정렬을 되돌린다. */
