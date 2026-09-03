@@ -280,66 +280,6 @@ input {
   overflow: hidden;
 }
 
-/* ── Install banner ────────────────────────────────────────── */
-
-.install {
-  display: flex;
-  align-items: center;
-  gap: 11px;
-  margin: 0 var(--gutter) 14px;
-  padding: 12px 13px;
-  border-radius: 16px;
-  background: #14161a;
-  color: #fff;
-  animation: riseIn 0.28s ease both;
-}
-
-.install__icon {
-  width: 38px;
-  height: 38px;
-  border-radius: 11px;
-  background: #0f1115;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 3px;
-  flex: none;
-}
-
-.install__bar {
-  width: 5px;
-  height: 17px;
-  border-radius: 3px;
-}
-
-.install__body {
-  flex: 1;
-  min-width: 0;
-}
-
-.install__title {
-  font-size: 13.5px;
-  font-weight: 800;
-  letter-spacing: -0.01em;
-}
-
-.install__sub {
-  font-size: 11.5px;
-  font-weight: 600;
-  color: rgba(255, 255, 255, 0.55);
-  line-height: 1.4;
-  margin-top: 2px;
-}
-
-.install__cta {
-  flex: none;
-  padding: 8px 13px;
-  border-radius: 999px;
-  background: #ff4a21;
-  font-size: 12px;
-  font-weight: 800;
-}
-
 /* ── App bar — brand title left, install entry point right ─── */
 
 .appBar {
@@ -504,7 +444,7 @@ input {
   color: #c2c6cc;
 }
 
-/* Collapsed install form — always reachable while installable. */
+/* 앱바의 설치 버튼 — 브라우저에서 열려 있는 동안 항상 보인다. */
 .installPill {
   display: flex;
   align-items: center;
@@ -530,21 +470,6 @@ input {
   width: 3px;
   height: 11px;
   border-radius: 2px;
-}
-
-.install__close {
-  flex: none;
-  width: 22px;
-  height: 22px;
-  border-radius: 8px;
-  background: rgba(255, 255, 255, 0.1);
-  color: rgba(255, 255, 255, 0.6);
-  font-size: 14px;
-  font-weight: 800;
-  line-height: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
 }
 
 /* ── Roster ────────────────────────────────────────────────── */
@@ -590,9 +515,16 @@ input {
   color: #fff;
 }
 
+/*
+ * 숫자와 단위를 한 줄에 — "30명", "12 / 30명 배정". 블록으로 쌓으면 단위가
+ * 숫자 아래로 떨어지므로 베이스라인을 공유하는 한 줄로 붙인다.
+ */
 .count {
-  text-align: right;
+  display: flex;
+  align-items: baseline;
+  gap: 2px;
   flex: none;
+  white-space: nowrap;
 }
 
 .count__n {
@@ -788,32 +720,6 @@ input {
   font-variant-numeric: tabular-nums;
 }
 
-.memberRow__team {
-  flex: none;
-  width: 38px;
-  display: flex;
-  justify-content: flex-end;
-}
-
-.teamBadge {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 32px;
-  padding: 3px 6px;
-  border-radius: 7px;
-  background: #14161a;
-  color: #fff;
-  font-size: 10.5px;
-  font-weight: 800;
-  white-space: nowrap;
-}
-
-.teamBadge--none {
-  background: transparent;
-  color: #c2c6cc;
-}
-
 .memberRow__caps em {
   font-style: normal;
   font-size: 9.5px;
@@ -827,6 +733,59 @@ input {
   font-weight: 800;
   color: #ff4a21;
   flex: none;
+}
+
+/*
+ * 선수 명단 행 — 이름 · 성별 · 경기 · 점수.
+ *
+ * 다른 화면의 .memberRow__main 은 flex 그대로 두고, 여기만 그리드로 바꾼다.
+ * 하나의 열 템플릿이 모든 행을 지배하므로 열이 명단 끝까지 줄맞춰진다.
+ *
+ * 네 칸 모두 fr — 행 폭을 남김 없이 나눠 갖는다. 한 칸에만 1fr 을 주면
+ * 남는 폭이 그 칸에만 쏠려 그 옆만 벌어지고(이름), 전부 고정 폭으로 두면
+ * 남는 폭이 행 끝에 뭉쳐 왼쪽으로 쏠린다. 비율은 각 칸이 필요한 만큼:
+ * 점수(182 (+30 −15))가 가장 넓고 성별(남/여)이 가장 좁다.
+ */
+.memberRow__main--players {
+  display: grid;
+  /* minmax(0, …) — 긴 이름이 자기 몫보다 트랙을 넓히지 못하게. 그래야 열이
+     모든 행에서 같은 자리에 온다. 넘치는 글자는 말줄임. */
+  grid-template-columns:
+    minmax(0, 1.4fr) minmax(0, 0.7fr) minmax(0, 0.9fr) minmax(0, 1.5fr);
+  column-gap: 6px;
+  padding: 11px 12px;
+  text-align: center;
+}
+
+/* 수정 칸은 운영자에게만 — 없을 때 빈 트랙이 남지 않게 템플릿을 따로 둔다. */
+.memberRow__main--players.memberRow__main--editable {
+  grid-template-columns:
+    minmax(0, 1.4fr) minmax(0, 0.7fr) minmax(0, 0.9fr) minmax(0, 1.5fr) 26px;
+}
+
+/* 이름만 왼쪽 정렬 — 나머지는 자기 열 가운데. */
+.memberRow__main--players .memberRow__name {
+  text-align: left;
+}
+
+/* 폭은 그리드가 정한다 — flex 시절의 고정 폭·오른쪽 정렬을 되돌린다. */
+.memberRow__main--players .memberRow__caps {
+  width: auto;
+  text-align: center;
+}
+
+/*
+ * 점수 = 숫자 + 괄호. 숫자 트랙만 고정이라 점수는 어느 행에서도 같은 x 에
+ * 오고, 괄호도 같은 x 에서 시작한다. 괄호가 자기 칸을 넘으면 잘린다.
+ */
+.memberRow__main--players .scoreCell {
+  grid-template-columns: 30px minmax(0, 1fr);
+  gap: 3px;
+}
+
+.memberRow__main--players .scoreCell__parts {
+  min-width: 0;
+  overflow: hidden;
 }
 
 .addRow {
@@ -1185,6 +1144,12 @@ input {
 
 .statRow--tiers {
   margin-top: 8px;
+}
+
+/* 선수 명단 위 요약 카드 — 라벨과 값을 카드 가운데로. */
+.statRow--three .stat,
+.statRow--tiers .stat {
+  text-align: center;
 }
 
 /* Three cards in one row need tighter padding and a non-wrapping label. */
@@ -2478,162 +2443,154 @@ input {
 
 /* ── League table (프리미어리그 스타일 순위표) ──────────────── */
 
-.tableWrap {
+/*
+ * 경기순위 표. One column template drives the header and every row, so the
+ * gaps between #, 팀, 경기, 게임승, 총점승, 승점, 누적득점 are identical the
+ * whole way down. Widths fit each header on a single line — nothing folds.
+ */
+.ltable {
+  /*
+   * 숫자 열은 각자의 헤더("게임승", "누적득점")가 트랙 안에 온전히 들어가는
+   * 폭 — 헤더가 트랙을 넘치면 가운데 정렬이 어긋나 보인다. 남는 폭은 팀 열이
+   * 전부 받고, 모자라면 명단이 팀 아래로 들여쓰기되어 내려간다.
+   */
+  --lt-cols: 22px minmax(0, 1fr) 26px 34px 34px 26px 44px;
+  --lt-gap: 6px;
+  /* 양옆 여백 — 숫자가 카드 모서리에 붙지 않게. */
+  --lt-pad: 12px;
+
   margin-top: 10px;
-  overflow-x: auto;
   border-radius: 14px;
   border: 1px solid rgba(0, 0, 0, 0.06);
   background: #fff;
-}
-
-.ltable {
-  width: 100%;
-  /*
-   * Fixed layout is what keeps the card from scrolling sideways on a phone:
-   * the numeric columns get the widths below and 팀 takes whatever is left,
-   * so the table can never grow past its container no matter how long a
-   * team name or roster line gets.
-   */
-  table-layout: fixed;
-  border-collapse: collapse;
+  overflow: hidden;
   font-variant-numeric: tabular-nums;
 }
 
-.ltable th,
-.ltable td {
-  padding: 9px 3px;
+.ltable__head,
+.ltable__row {
+  display: grid;
+  grid-template-columns: var(--lt-cols);
+  column-gap: var(--lt-gap);
+  align-items: center;
+  padding: 9px var(--lt-pad);
   text-align: center;
-  font-size: 11.5px;
-  font-weight: 700;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
 
-/* 경기 · 게임승 · 총점승 — sized to their headers, which are the widest text. */
-.ltable__g {
-  width: 28px;
-}
-
-.ltable__w {
-  width: 38px;
-}
-
-.ltable thead th {
+.ltable__head {
+  padding-top: 8px;
+  padding-bottom: 8px;
   background: #f7f6f3;
   color: #8a8f98;
   font-size: 10px;
   font-weight: 800;
+  white-space: nowrap;
   border-bottom: 1px solid rgba(0, 0, 0, 0.06);
 }
 
-/* One separator per team block, not between a team and its own roster line. */
-.ltable__rosterRow + tr td {
+/*
+ * Two explicit rows — 기록 줄 위, 로스터 줄 아래. 순번은 두 줄 전체를 차지하는
+ * 자기 칸에 들어가므로 팀명이 몇 줄로 접히든 겹치지 않는다.
+ */
+.ltable__row {
+  grid-template-rows: auto auto;
+  font-size: 11.5px;
+  font-weight: 700;
+  color: #14161a;
+}
+
+.ltable__row + .ltable__row {
   border-top: 1px solid rgba(0, 0, 0, 0.05);
 }
 
-.ltable__rosterRow td {
-  padding: 0 8px 9px 30px;
-  text-align: left;
-}
-
 .ltable__rank {
-  width: 22px;
   color: #8a8f98;
   font-weight: 800;
 }
 
+/* 순번은 팀 블록(기록 + 로스터) 전체 높이에 대해 세로 가운데. */
+.ltable__row .ltable__rank {
+  grid-column: 1;
+  grid-row: 1 / -1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  align-self: stretch;
+}
+
 .ltable__team {
   text-align: left;
-  padding-left: 8px;
-}
-
-/*
- * Never clip a name. The team cell wraps, and the roster line gets the whole
- * row below, so both always show in full. `keep-all` breaks at the ` · `
- * separators rather than mid-name.
- */
-.ltable__team,
-.ltable__name,
-.ltable__roster {
-  white-space: normal;
-  overflow: visible;
-  text-overflow: clip;
-  word-break: keep-all;
-  overflow-wrap: anywhere;
-}
-
-.ltable__name {
   font-size: 13px;
   font-weight: 800;
   letter-spacing: -0.02em;
-  color: #14161a;
+  /* Break at spaces, never mid-name. */
+  white-space: normal;
+  word-break: keep-all;
+  overflow-wrap: break-word;
 }
 
+.ltable__head .ltable__team {
+  font-size: 10px;
+  font-weight: 800;
+}
+
+/* 로스터는 순번 칸을 뺀 나머지 폭 전체 — 이름이 컬럼 안으로 접히지 않게. */
 .ltable__roster {
-  display: block;
+  grid-column: 2 / -1;
+  grid-row: 2;
+  margin-top: 4px;
+  text-align: left;
   font-size: 10.5px;
   font-weight: 600;
   line-height: 1.45;
   color: #a8adb4;
+  white-space: normal;
+  word-break: keep-all;
+  overflow-wrap: break-word;
 }
 
 .ltable__pts {
-  width: 32px;
   font-size: 14px;
   font-weight: 800;
   color: #ff4a21;
 }
 
+.ltable__head .ltable__pts,
+.ltable__head .ltable__pins {
+  font-size: 10px;
+  font-weight: 800;
+  color: #8a8f98;
+}
+
 .ltable__pins {
-  width: 48px;
   color: #6b6f76;
 }
 
 /*
- * Narrow phones: smaller header type lets every numeric column give a few
- * pixels back to 팀, which is the column that actually needs the room.
- * Widths still sum well under the card, so nothing scrolls.
+ * Top three, once results exist — an all-zero table has no leaders. Marked by
+ * weight and colour together so the podium reads at a glance.
  */
-@media (max-width: 380px) {
-  .ltable thead th {
-    font-size: 9.5px;
-  }
-
-  .ltable th,
-  .ltable td {
-    padding: 9px 2px;
-  }
-
-  .ltable__rank {
-    width: 20px;
-  }
-
-  .ltable__g {
-    width: 26px;
-  }
-
-  .ltable__w {
-    width: 36px;
-  }
-
-  .ltable__pts {
-    width: 30px;
-  }
-
-  .ltable__pins {
-    width: 45px;
-  }
+.ltable__row--top {
+  background: #fff7f4;
 }
 
-/* Top three carry a tint only once results exist — an all-zero table has no
-   leaders to highlight. */
 .ltable__row--top .ltable__rank {
+  color: #ff4a21;
+  font-weight: 900;
+}
+
+.ltable__row--top .ltable__team {
+  font-weight: 900;
   color: #14161a;
 }
 
-.ltable__row--top td {
-  background: #fffaf8;
+.ltable__row--top .ltable__pts {
+  font-weight: 900;
+}
+
+.ltable__row--top .ltable__pins,
+.ltable__row--top .ltable__roster {
+  color: #8a8f98;
 }
 
 .sectionLabel__note {

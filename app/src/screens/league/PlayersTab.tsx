@@ -24,48 +24,33 @@ interface Props {
 export function PlayersTab({ snapshot, state, error, isAdmin, onAdd, onEdit, onRetry }: Props) {
   const { players } = snapshot;
   // Appearances are per 회차; the newest season is the one people ask about.
-  // The current 회차 decides which team badge and appearance count to show.
   const activeSeason =
     snapshot.seasons.find((se) => se.isActive) ?? snapshot.seasons[0] ?? null;
   const played = activeSeason ? appearances(snapshot, activeSeason.id) : new Map<string, number>();
 
-  /** playerId → team name for the current 회차; absent until a team is set. */
-  const teamOf = new Map<string, string>();
-  if (activeSeason) {
-    const nameById = new Map(snapshot.teams.map((t) => [t.id, t.name] as const));
-    for (const e of snapshot.entries) {
-      if (e.seasonId !== activeSeason.id || e.teamId === null) continue;
-      const name = nameById.get(e.teamId);
-      if (name) teamOf.set(e.playerId, name);
-    }
-  }
   const { tiers, unranked } = groupByTier(players);
   const ranked = players.length - unranked.length;
   const stats = scoreStats(players);
 
   const row = (p: TieredPlayer) => (
     <div className="memberRow" key={p.id}>
+      {/* 이름 · 성별 · 경기 · 점수 — 한 그리드 템플릿이 열을 아래까지 맞춘다. */}
       <button
         type="button"
-        className="memberRow__main"
+        className={`memberRow__main memberRow__main--players${
+          isAdmin ? ' memberRow__main--editable' : ''
+        }`}
         onClick={() => isAdmin && onEdit(p)}
         disabled={!isAdmin}
         aria-label={isAdmin ? `${p.name} 수정` : p.name}
       >
         <div className="memberRow__name">{p.name}</div>
         <div className="memberRow__gender">{p.gender ?? '—'}</div>
-        <ScoreCell player={p} />
         <div className="memberRow__caps" title="출전 경기 수">
           {played.get(p.id) ?? 0}
           <em>경기</em>
         </div>
-        <div className="memberRow__team">
-          {teamOf.has(p.id) ? (
-            <span className="teamBadge">{teamOf.get(p.id)}</span>
-          ) : (
-            <span className="teamBadge teamBadge--none">–</span>
-          )}
-        </div>
+        <ScoreCell player={p} />
         {isAdmin && <div className="memberRow__edit">수정</div>}
       </button>
     </div>
@@ -146,7 +131,7 @@ export function PlayersTab({ snapshot, state, error, isAdmin, onAdd, onEdit, onR
           </div>
           <div className="hintBox hintBox--tight">
             점수 순으로 상위 30% 골드 · 40% 실버 · 30% 브론즈 (핸디는 티어에 반영하지 않음)
-            {activeSeason && ` · 출전·팀은 ${activeSeason.edition}회 기준`}
+            {activeSeason && ` · 출전은 ${activeSeason.edition}회 기준`}
           </div>
         </>
       )}

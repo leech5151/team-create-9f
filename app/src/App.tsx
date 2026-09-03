@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { BottomBar } from './components/BottomBar';
-import { InstallBanner, InstallPill } from './components/InstallBanner';
+import { InstallPill } from './components/InstallBanner';
 import { AddMembersSheet, type MemberDraft } from './components/AddMembersSheet';
 import { MemberSheet, type MemberEdit } from './components/MemberSheet';
 import { RollOverlay } from './components/RollOverlay';
@@ -428,13 +428,11 @@ export default function App() {
   }, [boardMode]);
 
   /**
-   * Only on the hub. Inside a feature the operator is mid-task, and the app bar
-   * there already carries a back action — an install prompt would compete with
-   * it. Dismissing only collapses the banner to a pill, so the entry point
-   * stays available rather than disappearing for good.
+   * The app bar carries one small install button and nothing else — no banner.
+   * It shows on every screen for as long as the app runs in a browser tab, and
+   * disappears on its own once the app is installed and opened standalone.
    */
-  const showInstall = installPrompt.installable && state.section === 'home';
-  const showInstallBanner = showInstall && !installPrompt.collapsed;
+  const showInstall = installPrompt.installable;
 
   return (
     <div className="app" data-dark={boardMode}>
@@ -451,15 +449,13 @@ export default function App() {
             </button>
           )}
           <div className="appBar__right">
-            {showInstall && !showInstallBanner && (
+            {showInstall && (
               <InstallPill
                 onClick={() => {
-                  // Chromium can go straight to the dialog; elsewhere the banner
-                  // has to explain where the browser hides the menu item.
-                  // Chromium can open its dialog; elsewhere the banner has to
-                  // explain where the browser hides the menu item.
+                  // Chromium can go straight to its own dialog. Everywhere else
+                  // installing is a browser-menu step we can only point at.
                   if (installPrompt.canPrompt) void installPrompt.install();
-                  else installPrompt.expand();
+                  else flash(installPrompt.hint);
                 }}
               />
             )}
@@ -484,15 +480,6 @@ export default function App() {
               ))}
           </div>
         </div>
-
-        {showInstallBanner && (
-          <InstallBanner
-            canPrompt={installPrompt.canPrompt}
-            isIos={installPrompt.isIos}
-            onInstall={() => void installPrompt.install()}
-            onCollapse={installPrompt.collapse}
-          />
-        )}
 
         {state.section === 'home' && (
           <HomeScreen

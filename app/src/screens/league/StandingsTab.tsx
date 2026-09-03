@@ -1,4 +1,3 @@
-import { Fragment } from 'react';
 import type { LeagueSnapshot, Season } from '../../league/api';
 import type { LeaguePlayer } from '../../league/types';
 import type { LoadState } from '../../league/useLeague';
@@ -68,54 +67,41 @@ export function StandingsTab({ snapshot, state, error, season, onRetry }: Props)
       {table.length === 0 ? (
         <div className="empty">팀이 등록되면 순위표가 표시됩니다.</div>
       ) : (
-        <div className="tableWrap">
-          <table className="ltable">
-            <thead>
-              <tr>
-                <th className="ltable__rank">#</th>
-                <th className="ltable__team">팀</th>
-                <th className="ltable__g">경기</th>
-                <th className="ltable__w">게임승</th>
-                <th className="ltable__w">총점승</th>
-                <th className="ltable__pts">승점</th>
-                <th className="ltable__pins">누적득점</th>
-              </tr>
-            </thead>
-            <tbody>
-              {table.map((row, i) => {
-                const top = i < 3 && anyPlayed;
-                return (
-                  /*
-                   * Two rows per team: the numbers, then the roster across the
-                   * full width. Squeezed into the 팀 column the names had to
-                   * wrap or clip on a phone; given the whole row they fit.
-                   */
-                  <Fragment key={row.teamId}>
-                    <tr className={top ? 'ltable__row--top' : undefined}>
-                      <td className="ltable__rank">{i + 1}</td>
-                      <td className="ltable__team">
-                        <div className="ltable__name">{row.teamName}</div>
-                      </td>
-                      <td>{row.played}</td>
-                      <td>{row.gameWins}</td>
-                      <td>{row.totalWins}</td>
-                      <td className="ltable__pts">{row.points}</td>
-                      <td className="ltable__pins">{row.totalPins || '–'}</td>
-                    </tr>
-                    <tr className={`ltable__rosterRow${top ? ' ltable__row--top' : ''}`}>
-                      <td colSpan={7}>
-                        <span className="ltable__roster">
-                          {rosterOf(row.teamId)
-                            .map((p) => p.name)
-                            .join(' · ') || '미배정'}
-                        </span>
-                      </td>
-                    </tr>
-                  </Fragment>
-                );
-              })}
-            </tbody>
-          </table>
+        /*
+         * A grid rather than a <table>: header and rows share one column
+         * template, so the spacing is identical down every column, and the
+         * roster can span the full width inside its own team's row instead of
+         * being squeezed into the 팀 column or split into a row of its own.
+         */
+        <div className="ltable">
+          <div className="ltable__head">
+            <span className="ltable__rank">#</span>
+            <span className="ltable__team">팀</span>
+            <span>경기</span>
+            <span>게임승</span>
+            <span>총점승</span>
+            <span className="ltable__pts">승점</span>
+            <span className="ltable__pins">누적득점</span>
+          </div>
+          {table.map((row, i) => (
+            <div
+              key={row.teamId}
+              className={`ltable__row${i < 3 && anyPlayed ? ' ltable__row--top' : ''}`}
+            >
+              <span className="ltable__rank">{i + 1}</span>
+              <span className="ltable__team">{row.teamName}</span>
+              <span>{row.played}</span>
+              <span>{row.gameWins}</span>
+              <span>{row.totalWins}</span>
+              <span className="ltable__pts">{row.points}</span>
+              <span className="ltable__pins">{row.totalPins || '–'}</span>
+              <span className="ltable__roster">
+                {rosterOf(row.teamId)
+                  .map((p) => p.name)
+                  .join(' · ') || '미배정'}
+              </span>
+            </div>
+          ))}
         </div>
       )}
 
