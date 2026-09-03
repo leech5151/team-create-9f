@@ -428,11 +428,14 @@ export default function App() {
   }, [boardMode]);
 
   /**
-   * The app bar carries one small install button and nothing else — no banner.
-   * It shows on every screen for as long as the app runs in a browser tab, and
-   * disappears on its own once the app is installed and opened standalone.
+   * One small app-bar button and nothing else — no banner.
+   *
+   * Only on the hub: inside 팀짜기 or 상주리그 the app bar carries the back
+   * action instead, and an install button beside it would compete with the task
+   * at hand. On the hub it is unconditional — it never gets dismissed, and only
+   * goes away on its own once the app is installed and opened standalone.
    */
-  const showInstall = installPrompt.installable;
+  const showInstall = installPrompt.installable && state.section === 'home';
 
   return (
     <div className="app" data-dark={boardMode}>
