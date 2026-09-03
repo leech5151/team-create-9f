@@ -77,8 +77,13 @@ export function DrawScreen({
 
       <div className="laneGrid">
         {lanes.map((lane) => {
-          const revealed = lane.members.filter((m) => placedSet.has(m.id)).length;
+          const drawn = lane.members.filter((m) => placedSet.has(m.id));
+          const revealed = drawn.length;
           const full = revealed === lane.members.length;
+          // Running total of who has actually been drawn, so the lanes can be
+          // compared while the draw is still going. `lane.avg` is the finished
+          // lane's average and says nothing about the half-filled state.
+          const sum = drawn.reduce((acc, m) => acc + m.avg, 0);
           return (
             <div
               className={`laneCard${lane.no === landedLane ? ' laneCard--hot' : ''}`}
@@ -87,7 +92,15 @@ export function DrawScreen({
               <div className="laneCard__head">
                 <div className="laneCard__no">{lane.no}번 레인</div>
                 <div className="laneCard__meta">
-                  {full ? `AVG ${lane.avg}` : `${revealed}/${lane.members.length}`}
+                  {/* 아직 아무도 안 뽑힌 레인에 0 을 띄우지는 않는다. */}
+                  {revealed > 0 && (
+                    <span className="laneCard__sum" title="배정된 인원의 점수 합">
+                      {sum}
+                    </span>
+                  )}
+                  <span className="laneCard__prog">
+                    {full ? `AVG ${lane.avg}` : `${revealed}/${lane.members.length}`}
+                  </span>
                 </div>
               </div>
               <div className="laneCard__slots">

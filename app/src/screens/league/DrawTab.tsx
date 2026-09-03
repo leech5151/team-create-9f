@@ -373,6 +373,9 @@ export function DrawTab({
             {seasonTeams.map((team) => {
               const members = membersOf(team.id);
               const captainId = captainOf(team.id);
+              // 뽑힌 팀원들의 점수 합 — 한 명씩 배정될 때마다 올라가므로 뽑는
+              // 도중에 팀끼리 비교할 수 있다. 점수 미기입 선수는 빠진다.
+              const scoreSum = members.reduce((acc, p) => acc + (p.avg ?? 0), 0);
               return (
                 <button
                   type="button"
@@ -385,7 +388,14 @@ export function DrawTab({
                 >
                   <div className="teamChip__head">
                     <span className="teamChip__name">{team.name}</span>
-                    <span className="teamChip__sum">{members.length}명</span>
+                    <span className="teamChip__sum">
+                      {scoreSum > 0 && (
+                        <em className="teamChip__score" title="팀 점수 합">
+                          {scoreSum}
+                        </em>
+                      )}
+                      {members.length}명
+                    </span>
                   </div>
                   <div className="teamChip__players">
                     {members.length === 0 ? (

@@ -2695,10 +2695,25 @@ input {
 }
 
 .teamChip__sum {
+  display: flex;
+  align-items: baseline;
+  gap: 5px;
   font-size: 12px;
   font-weight: 800;
   color: #ff4a21;
   font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/*
+ * 팀 점수 합 — 뽑는 동안 팀끼리 비교하는 값. 인원수(주황)와 구분되게
+ * 중립 색으로 두고, 아직 아무도 없는 팀에는 아예 나오지 않는다.
+ */
+.teamChip__score {
+  font-style: normal;
+  font-size: 12.5px;
+  font-weight: 800;
+  color: #14161a;
 }
 
 .draftMember {
@@ -3043,10 +3058,28 @@ input {
 }
 
 .laneCard__meta {
+  display: flex;
+  align-items: baseline;
+  gap: 5px;
   font-size: 10px;
   font-weight: 800;
   color: #8a8f98;
   white-space: nowrap;
+}
+
+/*
+ * 배정된 인원의 점수 합 — 뽑는 동안 레인끼리 비교하는 값이라 레인 번호
+ * 다음으로 눈에 먼저 들어와야 한다. 진행 표시(2/4 · AVG)는 보조.
+ */
+.laneCard__sum {
+  font-size: 12.5px;
+  font-weight: 800;
+  color: #14161a;
+  font-variant-numeric: tabular-nums;
+}
+
+.laneCard__prog {
+  font-variant-numeric: tabular-nums;
 }
 
 .laneCard__slots {
