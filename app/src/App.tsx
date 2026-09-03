@@ -343,7 +343,13 @@ export default function App() {
     undoBuffer.current = state;
     roll.reset();
     clearState();
-    setState(initialState());
+    /*
+     * Wipe the data, not the user's place: `initialState()` starts on the hub,
+     * so spreading it wholesale would throw 팀짜기 back to the home screen the
+     * moment the roster was cleared. The section is carried over; the screen
+     * goes to 명단, since 배정 and 기록 have nothing left to show.
+     */
+    setState((s) => ({ ...initialState(), section: s.section }));
     setEditMode(false);
     flash('명단과 기록을 모두 삭제했어요', {
       label: '실행 취소',
