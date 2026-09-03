@@ -13,6 +13,7 @@ import {
   clearCaptain,
   createEmptyTeams,
   deleteTeam,
+  renameTeam,
   setSeasonActive,
   setCaptain,
   saveGameScores,
@@ -280,6 +281,15 @@ export function LeagueScreen({ tab, onGoTab, isAdmin, onNotify }: Props) {
       ? attempt(() => deleteTeam(teamId), '팀을 삭제했어요')
       : Promise.resolve('회차를 먼저 만들어 주세요.');
 
+  const renameOneTeam = (teamId: string, name: string) => {
+    const trimmed = name.trim();
+    if (trimmed === '') return Promise.resolve('팀 이름을 입력해 주세요.');
+    // 같은 회차 안에서 이름이 겹치면 대진표에서 어느 팀인지 알 수 없다.
+    const clash = seasonTeams.some((t) => t.id !== teamId && t.name === trimmed);
+    if (clash) return Promise.resolve(`이미 "${trimmed}" 팀이 있어요.`);
+    return attempt(() => renameTeam(teamId, trimmed), '팀 이름을 바꿨어요');
+  };
+
   const assignToTeam = (playerId: string, teamId: string | null) =>
     season
       ? attempt(
@@ -404,6 +414,7 @@ export function LeagueScreen({ tab, onGoTab, isAdmin, onNotify }: Props) {
           onCreateTeams={createTeams}
           onAddTeam={addOneTeam}
           onDeleteTeam={removeOneTeam}
+          onRenameTeam={renameOneTeam}
           onAssign={assignToTeam}
           onSetCaptain={makeCaptain}
           onClearCaptain={dropCaptain}

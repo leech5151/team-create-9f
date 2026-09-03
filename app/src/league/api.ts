@@ -365,6 +365,17 @@ export async function createTeam(
 }
 
 /**
+ * Renames a team, leaving its roster and fixtures alone.
+ *
+ * `updateTeam` also renames, but rebuilds the roster on the way through — too
+ * blunt for the 팀 상세 sheet, where the name is edited on its own.
+ */
+export async function renameTeam(teamId: string, name: string): Promise<void> {
+  const { error } = await client().from('teams').update({ name }).eq('id', teamId);
+  if (error) throw new Error(error.message);
+}
+
+/**
  * Renames a team and replaces its roster.
  *
  * The old members are detached first, so a player dropped from the team is left

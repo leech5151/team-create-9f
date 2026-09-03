@@ -19,6 +19,7 @@ export function ClaimSheet({ player, teams, busy, onClaim, onClose }: Props) {
           어느 팀이 데려갈지 고르세요.
           {player.avg !== null && ` 점수 ${player.avg}`}
           {player.handicap > 0 && ` · 핸디 +${player.handicap}`}
+          {player.penalty > 0 && ` · 패널티 −${player.penalty}`}
         </div>
 
         <div className="claimList">

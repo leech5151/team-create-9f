@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import type { Team } from '../../league/api';
 import type { LeaguePlayer } from '../../league/types';
 
@@ -8,35 +9,60 @@ interface Props {
   captainId: string | null;
   /** True while a write is in flight, so the sheet can show it. */
   busy: boolean;
+  /**
+   * Message from the last failed write, or null. The tab behind the scrim
+   * shows it too, but that is hidden while the sheet is open.
+   */
+  error: string | null;
   /** Players on no team yet — the pool this team can draw from. */
   available: readonly LeaguePlayer[];
   onAdd: (playerId: string) => void;
   onRemove: (playerId: string) => void;
   onSetCaptain: (playerId: string) => void;
   onClearCaptain: (playerId: string) => void;
+  /** Resolves true once the new name is stored. */
+  onRename: (name: string) => Promise<boolean>;
   onDeleteTeam: () => void;
   onClose: () => void;
 }
 
 /**
- * Roster editor for one team: add or drop players, and choose the captain.
+ * Roster editor for one team: rename it, add or drop players, choose the
+ * captain.
  *
- * Every action writes through immediately, so there is no save button — the
- * sheet reflects what is already stored.
+ * The roster actions write through immediately, so there is no save button.
+ * The name is the exception — typing cannot commit on every keystroke, so it
+ * gets its own 변경 button and commits on Enter too.
  */
 export function TeamMemberSheet({
   team,
   members,
   captainId,
   busy,
+  error,
   available,
   onAdd,
   onRemove,
   onSetCaptain,
   onClearCaptain,
+  onRename,
   onDeleteTeam,
   onClose,
 }: Props) {
+  const [name, setName] = useState(team.name);
+
+  // Follow the stored name — after a successful rename, and if the sheet is
+  // reused for another team.
+  useEffect(() => setName(team.name), [team.id, team.name]);
+
+  const trimmed = name.trim();
+  const changed = trimmed !== '' && trimmed !== team.name;
+
+  const commitName = () => {
+    if (!changed || busy) return;
+    void onRename(trimmed);
+  };
+
   return (
     <div
       className="sheetScrim"
@@ -51,7 +77,40 @@ export function TeamMemberSheet({
           바꾸는 즉시 저장됩니다. 팀장은 팀마다 한 명이에요.
         </div>
 
+        <div className="field">
+          <label className="field__label" htmlFor="team-name">
+            팀 이름
+          </label>
+          <div className="renameRow">
+            <input
+              id="team-name"
+              className="field__input"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  commitName();
+                }
+              }}
+              placeholder={team.name}
+              autoComplete="off"
+              maxLength={20}
+              disabled={busy}
+            />
+            <button
+              type="button"
+              className="renameRow__save"
+              onClick={commitName}
+              disabled={busy || !changed}
+            >
+              변경
+            </button>
+          </div>
+        </div>
+
         {busy && <div className="sheetBusy">저장 중…</div>}
+        {!busy && error && <div className="field__error">{error}</div>}
 
         <div className="sectionLabel">
           팀원

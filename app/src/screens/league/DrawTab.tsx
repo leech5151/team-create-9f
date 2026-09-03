@@ -2,6 +2,8 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import type { LeagueSnapshot, Season, Team } from '../../league/api';
 import type { LeaguePlayer } from '../../league/types';
 import { shuffle } from '../../lib/assign';
+import { teamScore } from '../../league/tiers';
+import { TeamAdjust } from '../../components/league/TeamAdjust';
 import { TeamMemberSheet } from '../../components/league/TeamMemberSheet';
 import { ClaimSheet } from '../../components/league/ClaimSheet';
 import { RandomAssignSheet } from '../../components/league/RandomAssignSheet';
@@ -13,6 +15,7 @@ interface Props {
   onCreateTeams: (count: number) => Promise<string | null>;
   onAddTeam: () => Promise<string | null>;
   onDeleteTeam: (teamId: string) => Promise<string | null>;
+  onRenameTeam: (teamId: string, name: string) => Promise<string | null>;
   onAssign: (playerId: string, teamId: string | null) => Promise<string | null>;
   onSetCaptain: (teamId: string, playerId: string) => Promise<string | null>;
   onClearCaptain: (playerId: string) => Promise<string | null>;
@@ -55,6 +58,7 @@ export function DrawTab({
   onCreateTeams,
   onAddTeam,
   onDeleteTeam,
+  onRenameTeam,
   onAssign,
   onSetCaptain,
   onClearCaptain,
@@ -310,6 +314,7 @@ export function DrawTab({
                     {drawnPlayer.gender ?? '—'}
                     {drawnPlayer.avg !== null && ` · 점수 ${drawnPlayer.avg}`}
                     {drawnPlayer.handicap > 0 && ` · 핸디 +${drawnPlayer.handicap}`}
+                    {drawnPlayer.penalty > 0 && ` · 패널티 −${drawnPlayer.penalty}`}
                   </div>
                   <div className="drawPanel__actions">
                     <button
@@ -373,9 +378,12 @@ export function DrawTab({
             {seasonTeams.map((team) => {
               const members = membersOf(team.id);
               const captainId = captainOf(team.id);
-              // 뽑힌 팀원들의 점수 합 — 한 명씩 배정될 때마다 올라가므로 뽑는
-              // 도중에 팀끼리 비교할 수 있다. 점수 미기입 선수는 빠진다.
-              const scoreSum = members.reduce((acc, p) => acc + (p.avg ?? 0), 0);
+              /*
+               * 대진·경기 화면과 같은 셈법(teamScore): 합계는 원점수 합이고
+               * 핸디·패널티는 그 아래 TeamAdjust 한 줄로 따로 보여준다. 한 명씩
+               * 배정될 때마다 올라가므로 뽑는 도중에 팀끼리 비교할 수 있다.
+               */
+              const score = teamScore(members);
               return (
                 <button
                   type="button"
@@ -389,14 +397,16 @@ export function DrawTab({
                   <div className="teamChip__head">
                     <span className="teamChip__name">{team.name}</span>
                     <span className="teamChip__sum">
-                      {scoreSum > 0 && (
-                        <em className="teamChip__score" title="팀 점수 합">
-                          {scoreSum}
+                      {score.scored > 0 && (
+                        <em className="teamChip__score" title="팀 원점수 합계">
+                          {score.base}
                         </em>
                       )}
                       {members.length}명
                     </span>
                   </div>
+                  {/* 대진이 아직 없으니 대진 핸디캡은 0 — 팀 자체의 핸디·패널티만. */}
+                  <TeamAdjust roster={members} fixtureHandicap={0} />
                   <div className="teamChip__players">
                     {members.length === 0 ? (
                       <span className="teamChip__none">미배정</span>
@@ -406,6 +416,10 @@ export function DrawTab({
                           {captainId === p.id && <em className="captainMark">장</em>}
                           {p.name}
                           {p.avg !== null && ` ${p.avg}`}
+                          {p.handicap > 0 && <em className="fixture__adj">+{p.handicap}</em>}
+                          {p.penalty > 0 && (
+                            <em className="fixture__adj fixture__adj--pen">−{p.penalty}</em>
+                          )}
                         </span>
                       ))
                     )}
@@ -506,7 +520,11 @@ export function DrawTab({
 
       {editing && (
         <TeamMemberSheet
-          team={editing}
+          /*
+           * The live row, not the one captured on click — otherwise a rename
+           * leaves the sheet showing the old name until it is reopened.
+           */
+          team={seasonTeams.find((t) => t.id === editing.id) ?? editing}
           members={membersOf(editing.id)}
           captainId={captainOf(editing.id)}
           available={unassigned}
@@ -514,6 +532,7 @@ export function DrawTab({
           onRemove={(playerId) => void run(() => onAssign(playerId, null))}
           onSetCaptain={(playerId) => void run(() => onSetCaptain(editing.id, playerId))}
           onClearCaptain={(playerId) => void run(() => onClearCaptain(playerId))}
+          onRename={(name) => run(() => onRenameTeam(editing.id, name))}
           onDeleteTeam={() => {
             if (
               !window.confirm(
@@ -527,6 +546,7 @@ export function DrawTab({
             });
           }}
           busy={busy}
+          error={error}
           onClose={() => setEditing(null)}
         />
       )}

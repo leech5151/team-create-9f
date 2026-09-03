@@ -4002,6 +4002,32 @@ input {
   color: #c93a16;
 }
 
+/*
+ * 이름 입력 + 변경 버튼. 시트의 다른 조작은 누르는 즉시 저장되지만 글자
+ * 입력은 그럴 수 없어서 이 한 줄만 확정 버튼을 갖는다.
+ */
+.renameRow {
+  display: flex;
+  gap: 8px;
+}
+
+.renameRow__save {
+  flex: none;
+  height: 46px;
+  padding: 0 16px;
+  border-radius: 14px;
+  background: #14161a;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.renameRow__save:disabled {
+  background: #e7e5e0;
+  color: #b0b4ba;
+}
+
 .optRow {
   display: flex;
   gap: 6px;
