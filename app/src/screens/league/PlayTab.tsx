@@ -3,7 +3,8 @@ import type { LeagueSnapshot, Match, Season, Week } from '../../league/api';
 import type { LeaguePlayer } from '../../league/types';
 import type { LoadState } from '../../league/useLeague';
 import { TeamAdjust } from '../../components/league/TeamAdjust';
-import { orderRoster, teamScore, TIER_META, type TeamScore } from '../../league/tiers';
+import { TotalLine } from '../../components/league/TotalLine';
+import { orderRoster, TIER_META } from '../../league/tiers';
 import { fixtureHandicaps } from '../../league/scoring';
 import type { TieredPlayer } from '../../league/tiers';
 import {
@@ -359,23 +360,6 @@ export function PlayTab({
   );
 }
 
-/**
- * The line-up's raw 점수 total. The handicap and penalty used to sit beside it
- * in parentheses, but `TeamAdjust` prints the same figures directly below —
- * so this stays the scratch number only.
- */
-function TotalLine({ score }: { score: TeamScore }) {
-  const partial = score.scored < score.size;
-  return (
-    <div className="totalLine" title="팀 원점수 합계">
-      <span className="totalLine__base">{score.scored === 0 ? '–' : score.base}</span>
-      {partial && score.scored > 0 && (
-        <span className="totalLine__warn">{score.size - score.scored}명 점수 없음</span>
-      )}
-    </div>
-  );
-}
-
 function FixtureSide({ name, roster, outcome, points, fixtureHandicap }: {
   name: string;
   roster: readonly TieredPlayer[];
@@ -395,7 +379,7 @@ function FixtureSide({ name, roster, outcome, points, fixtureHandicap }: {
           </div>
         )}
       </div>
-      <TotalLine score={teamScore(roster)} />
+      <TotalLine roster={roster} />
       <TeamAdjust roster={roster} fixtureHandicap={fixtureHandicap} />
       <div className="fixture__players">
         {roster.length === 0 ? (

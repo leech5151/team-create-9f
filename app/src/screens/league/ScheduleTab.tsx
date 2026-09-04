@@ -10,6 +10,7 @@ import {
   type Outcome,
 } from '../../league/standings';
 import { TeamAdjust } from '../../components/league/TeamAdjust';
+import { TotalLine } from '../../components/league/TotalLine';
 import { orderRoster, TIER_META, type TieredPlayer } from '../../league/tiers';
 import { fixtureHandicaps } from '../../league/scoring';
 import {
@@ -268,6 +269,7 @@ function ScheduleSide({ name, roster, outcome, points, fixtureHandicap }: {
           </div>
         )}
       </div>
+      <TotalLine roster={roster} />
       <div className="fixture__players">
         {roster.length === 0 ? (
           <span className="fixture__empty">선수 미배정</span>
