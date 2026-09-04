@@ -1626,6 +1626,19 @@ input {
   vertical-align: 1px;
 }
 
+/*
+ * 이름 옆 개인 점수(원점수). 옆에 붙는 핸디·패널티가 색으로 튀어야 하므로
+ * 이쪽은 중립색으로 둔다.
+ */
+.fixture__score {
+  font-style: normal;
+  font-size: 11.5px;
+  font-weight: 800;
+  color: #8a8f98;
+  margin-left: 5px;
+  font-variant-numeric: tabular-nums;
+}
+
 .scoreTeam__work {
   margin-left: 6px;
   font-style: normal;

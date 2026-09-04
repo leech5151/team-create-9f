@@ -4,7 +4,8 @@ import type { LeaguePlayer } from '../../league/types';
 import type { LoadState } from '../../league/useLeague';
 import { TeamAdjust } from '../../components/league/TeamAdjust';
 import { TotalLine } from '../../components/league/TotalLine';
-import { orderRoster, TIER_META } from '../../league/tiers';
+import { FixturePlayer } from '../../components/league/FixturePlayer';
+import { orderRoster } from '../../league/tiers';
 import { fixtureHandicaps } from '../../league/scoring';
 import type { TieredPlayer } from '../../league/tiers';
 import {
@@ -385,16 +386,7 @@ function FixtureSide({ name, roster, outcome, points, fixtureHandicap }: {
         {roster.length === 0 ? (
           <span className="fixture__empty">선수 미배정</span>
         ) : (
-          roster.map((p) => (
-            <span className="fixture__player" key={p.id}>
-              {p.tier && (
-                <em className="fixture__tier" style={{ background: TIER_META[p.tier].color }} />
-              )}
-              {p.name}
-              {p.handicap > 0 && <em className="fixture__adj">+{p.handicap}</em>}
-              {p.penalty > 0 && <em className="fixture__adj fixture__adj--pen">−{p.penalty}</em>}
-            </span>
-          ))
+          roster.map((p) => <FixturePlayer player={p} key={p.id} />)
         )}
       </div>
     </div>
