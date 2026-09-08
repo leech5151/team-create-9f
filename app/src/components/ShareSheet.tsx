@@ -7,9 +7,11 @@ interface Props {
   onClose: () => void;
   onShare: () => void;
   onCopy: () => void;
+  /** Copies the lane card as a PNG, falling back to share/download. */
+  onCopyImage: () => void;
 }
 
-export function ShareSheet({ game, lanes, onClose, onShare, onCopy }: Props) {
+export function ShareSheet({ game, lanes, onClose, onShare, onCopy, onCopyImage }: Props) {
   return (
     <div
       className="shareScrim"
@@ -34,6 +36,13 @@ export function ShareSheet({ game, lanes, onClose, onShare, onCopy }: Props) {
         <div className="shareActions">
           <button type="button" className="shareActions__primary" onClick={onShare}>
             공유하기
+          </button>
+          {/*
+            이미지 복사는 클릭 제스처 안에서 클립보드에 써야 Safari 가 허용한다
+            — 그래서 시트를 닫지 않고 여기서 바로 처리한다.
+          */}
+          <button type="button" className="shareActions__secondary" onClick={onCopyImage}>
+            이미지 복사
           </button>
           <button type="button" className="shareActions__secondary" onClick={onCopy}>
             텍스트 복사

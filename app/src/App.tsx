@@ -22,6 +22,7 @@ import {
   tierMap,
 } from './lib/assign';
 import { shareText } from './lib/format';
+import { shareLaneImage } from './lib/shareImage';
 import { clearState, initialState, loadState, saveState, type PersistedState } from './lib/storage';
 import { HistoryScreen } from './screens/HistoryScreen';
 import { HomeScreen } from './screens/HomeScreen';
@@ -536,6 +537,26 @@ export default function App() {
     await copyText();
   };
 
+  /**
+   * The lane card as a PNG. Where it lands depends on the browser, so the
+   * toast names what actually happened rather than always claiming 복사.
+   */
+  const copyImage = async () => {
+    try {
+      const how = await shareLaneImage(state.game, lanes);
+      flash(
+        how === 'copied'
+          ? '이미지를 복사했어요'
+          : how === 'shared'
+            ? '이미지를 공유했어요'
+            : '이미지를 저장했어요 — 이 브라우저는 이미지 복사를 지원하지 않아요',
+      );
+    } catch (e) {
+      if (e instanceof DOMException && e.name === 'AbortError') return;
+      flash(e instanceof Error ? e.message : '이미지 복사에 실패했어요');
+    }
+  };
+
   // ── Bottom bar wiring ──────────────────────────────────────
   const ctaLabel = (() => {
     if (state.screen === 'roster') {
@@ -746,6 +767,7 @@ export default function App() {
           onClose={() => setShareOpen(false)}
           onShare={nativeShare}
           onCopy={copyText}
+          onCopyImage={() => void copyImage()}
         />
       )}
 

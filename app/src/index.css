@@ -4038,14 +4038,19 @@ input {
   margin-top: 3px;
 }
 
+/*
+ * 공유하기 한 줄, 그 아래 복사 두 개. 세 개를 한 줄에 넣으면 402px 폭에서
+ * 공유하기가 글자만 겨우 들어갈 만큼 좁아진다.
+ */
 .shareActions {
   display: flex;
+  flex-wrap: wrap;
   gap: 8px;
   margin-top: 14px;
 }
 
 .shareActions__primary {
-  flex: 1;
+  flex: 1 1 100%;
   text-align: center;
   padding: 12px;
   border-radius: 12px;
@@ -4055,11 +4060,14 @@ input {
 }
 
 .shareActions__secondary {
-  padding: 12px 16px;
+  flex: 1;
+  text-align: center;
+  padding: 12px 10px;
   border-radius: 12px;
   background: rgba(255, 255, 255, 0.12);
   font-size: 13px;
   font-weight: 800;
+  white-space: nowrap;
 }
 
 /* ── Member editor sheet ───────────────────────────────────── */
