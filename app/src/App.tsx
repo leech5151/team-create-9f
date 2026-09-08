@@ -7,6 +7,9 @@ import { RollOverlay } from './components/RollOverlay';
 import { ShareSheet } from './components/ShareSheet';
 import { useInstallPrompt } from './hooks/useInstallPrompt';
 import { useAdminAuth } from './league/useAdminAuth';
+import { useMeetups } from './meetup/useMeetups';
+import { deleteMeetup, saveMeetup } from './meetup/api';
+import { formatDate, todayUtc } from './league/schedule';
 import { LoginSheet } from './components/LoginSheet';
 import { useRoll } from './hooks/useRoll';
 import {
@@ -56,6 +59,18 @@ interface ToastAction {
   run: () => void;
 }
 
+/**
+ * A member id that stays unique across browsers, since members are shared once
+ * a 정모 is saved. `randomUUID` needs a secure context; the fallback covers
+ * plain-http local testing.
+ */
+function newMemberId(): string {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID();
+  }
+  return `m-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+}
+
 export default function App() {
   const [state, setState] = useState<PersistedState>(loadState);
   const [shareOpen, setShareOpen] = useState(false);
@@ -72,7 +87,25 @@ export default function App() {
   // Not persisted: entering 상주리그 always lands on 메인.
   const [leagueTabState, setLeagueTabState] = useState<LeagueTab>('main');
 
-  useEffect(() => saveState(state), [state]);
+  const meetups = useMeetups();
+  /**
+   * The 정모 the roster screen is currently working on, by date; null means the
+   * ordinary session draw that lives only in this browser.
+   *
+   * Not persisted — a reload starts on the session roster, so nobody is left
+   * unknowingly editing a shared 정모.
+   */
+  const [meetupOn, setMeetupOn] = useState<string | null>(null);
+  const [meetupBusy, setMeetupBusy] = useState(false);
+
+  /*
+   * Only the session roster is persisted. A loaded 정모 must not be written to
+   * localStorage: it would clobber whatever the user had drawn themselves, and
+   * `closeMeetup` would then have nothing to come back to.
+   */
+  useEffect(() => {
+    if (meetupOn === null) saveState(state);
+  }, [state, meetupOn]);
 
   const flash = useCallback((message: string, action?: ToastAction) => {
     setToast({ message, action });
@@ -100,8 +133,8 @@ export default function App() {
 
   /** Current draw's lanes, rehydrated from ids so roster edits flow through. */
   const lanes = useMemo<Lane[]>(
-    () => hydrateLanes(state.laneIds, byId),
-    [state.laneIds, byId],
+    () => hydrateLanes(state.laneIds, byId, state.firstLane),
+    [state.laneIds, byId, state.firstLane],
   );
 
   /** Tier per attending member — recomputed whenever scores or attendance change. */
@@ -180,13 +213,15 @@ export default function App() {
   /** Appends a batch of new members, all marked attending. */
   const addMembers = (drafts: MemberDraft[]) => {
     setState((s) => {
-      // Monotonic suffix so an id is never reused after deletions.
-      let next =
-        s.roster.reduce((max, m) => {
-          const n = Number(m.id.replace(/^m/, ''));
-          return Number.isFinite(n) ? Math.max(max, n) : max;
-        }, 0) + 1;
-      const added = drafts.map((d) => ({ id: `m${next++}`, ...d }));
+      /*
+       * Random ids, not a running `m1, m2 …` counter.
+       *
+       * Members now reach a shared table when a 정모 is saved, and the counter
+       * restarted at m1 after 전체삭제 — so a fresh roster's m1 would have
+       * overwritten a different person already stored on the server. Existing
+       * `mN` ids keep working; only new members get these.
+       */
+      const added = drafts.map((d) => ({ id: newMemberId(), ...d }));
       return {
         ...s,
         roster: [...s.roster, ...added],
@@ -332,6 +367,122 @@ export default function App() {
       screen: 'roster',
     }));
     flash('예시 명단 30명을 불러왔어요');
+  };
+
+  // ── 정모: the shared counterpart to the session draw ───────
+  /**
+   * Loads a saved 정모 into the roster screen.
+   *
+   * The 정모 becomes the working state rather than a separate parallel screen,
+   * so every existing tool — 참석 체크, 레인 설정, 뽑기 — works on it unchanged.
+   * `저장` is what pushes it back; nothing is written while editing.
+   */
+  const openMeetup = (metOn: string) => {
+    const meetup = meetups.snapshot.meetups.find((m) => m.metOn === metOn);
+    /*
+     * No 정모 saved for that date yet — start one from whatever is on screen,
+     * so the operator can draw first and save afterwards. Nothing is written
+     * until 저장, so this is safe even if they change their mind.
+     */
+    if (!meetup) {
+      setMeetupOn(metOn);
+      flash(`${metOn} 정모를 새로 만듭니다 — 저장을 누르면 공유돼요`);
+      return;
+    }
+
+    const rows = meetups.snapshot.attendees.filter((a) => a.meetupId === meetup.id);
+    const attending = new Set(rows.map((a) => a.memberId));
+    const known = new Set(meetups.snapshot.members.map((m) => m.id));
+
+    // Lanes back from lane_no/slot: group by lane, then order within it.
+    const byLane = new Map<number, typeof rows>();
+    for (const a of rows) {
+      if (a.laneNo === null || !known.has(a.memberId)) continue;
+      const bucket = byLane.get(a.laneNo);
+      if (bucket) bucket.push(a);
+      else byLane.set(a.laneNo, [a]);
+    }
+    const laneIds = [...byLane.entries()]
+      .sort(([a], [b]) => a - b)
+      .map(([, group]) => group.sort((x, y) => x.slot - y.slot).map((a) => a.memberId));
+    const queue = laneIds.flat();
+
+    roll.reset();
+    setEditMode(false);
+    setMeetupOn(meetup.metOn);
+    setState((s) => ({
+      ...s,
+      roster: meetups.snapshot.members.slice(),
+      attend: Object.fromEntries([...attending].map((id) => [id, true])),
+      laneCount: meetup.laneCount > 0 ? meetup.laneCount : null,
+      firstLane: meetup.firstLane,
+      laneIds,
+      queue,
+      // A saved 정모's lanes are final, so everyone shows as already placed.
+      placed: queue,
+      screen: 'roster',
+    }));
+    flash(`${meetup.metOn} 정모를 불러왔어요`);
+  };
+
+  /**
+   * Back to the browser-only roster; the 정모 on the server is untouched.
+   *
+   * The session state comes back off localStorage, which 정모 mode deliberately
+   * left alone — but not its `section`/`screen`, or leaving a 정모 would bounce
+   * the user out of 팀짜기 to wherever they last were.
+   */
+  const closeMeetup = () => {
+    const unsaved = meetupOn !== null && !meetups.snapshot.meetups.some((m) => m.metOn === meetupOn);
+    if (unsaved && !window.confirm('저장하지 않은 정모입니다. 나가면 이 배정은 사라집니다.\n계속할까요?')) {
+      return;
+    }
+    roll.reset();
+    setEditMode(false);
+    setMeetupOn(null);
+    setState((s) => ({ ...loadState(), section: s.section, screen: s.screen }));
+    flash('세션 명단으로 돌아왔어요');
+  };
+
+  /** Writes the roster, attendance and drawn lanes to the 정모 for `metOn`. */
+  const storeMeetup = async (metOn: string) => {
+    setMeetupBusy(true);
+    try {
+      await saveMeetup({
+        metOn,
+        title: null,
+        firstLane: state.firstLane,
+        members: state.roster,
+        attendingIds: attending.map((m) => m.id),
+        lanes: state.laneIds,
+      });
+      await meetups.refresh();
+      setMeetupOn(metOn);
+      flash(`${metOn} 정모로 저장했어요`);
+    } catch (e) {
+      flash(e instanceof Error ? e.message : '정모 저장에 실패했어요');
+    } finally {
+      setMeetupBusy(false);
+    }
+  };
+
+  const removeMeetup = async (metOn: string) => {
+    const meetup = meetups.snapshot.meetups.find((m) => m.metOn === metOn);
+    if (!meetup) return;
+    if (!window.confirm(`${metOn} 정모를 삭제할까요?\n참석 명단과 레인 배정이 함께 지워집니다.`)) {
+      return;
+    }
+    setMeetupBusy(true);
+    try {
+      await deleteMeetup(meetup.id);
+      await meetups.refresh();
+      if (meetupOn === metOn) closeMeetup();
+      else flash('정모를 삭제했어요');
+    } catch (e) {
+      flash(e instanceof Error ? e.message : '정모 삭제에 실패했어요');
+    } finally {
+      setMeetupBusy(false);
+    }
   };
 
   /** Wipes the roster, history and any draw in progress, back to first-run state. */
@@ -511,6 +662,8 @@ export default function App() {
             autoLaneCount={autoLaneCount}
             laneCountChosen={chosenLaneCount !== null}
             onChangeLaneCount={(n) => setState((s) => ({ ...s, laneCount: n }))}
+            firstLane={state.firstLane}
+            onChangeFirstLane={(n) => setState((s) => ({ ...s, firstLane: n }))}
             editMode={editMode}
             onToggleEditMode={() => setEditMode((v) => !v)}
             onToggleAttend={toggleAttend}
@@ -522,6 +675,16 @@ export default function App() {
             onAddMembers={() => setAdding(true)}
             onLoadSample={() => void loadSample()}
             onResetData={resetEverything}
+            isAdmin={auth.isAdmin}
+            meetupOn={meetupOn}
+            meetups={meetups.snapshot.meetups}
+            meetupState={meetups.state}
+            meetupBusy={meetupBusy}
+            onOpenMeetup={openMeetup}
+            onCloseMeetup={closeMeetup}
+            onSaveMeetup={(metOn) => void storeMeetup(metOn)}
+            onDeleteMeetup={(metOn) => void removeMeetup(metOn)}
+            today={formatDate(todayUtc())}
           />
         )}
 

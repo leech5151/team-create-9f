@@ -33,7 +33,7 @@ interface Props {
   week: Week | null;
   onPickWeek: (id: string) => void;
   onCreateSeason: () => void;
-  /** Sends the operator to the 팀짜기 tab, which now owns team composition. */
+  /** Sends the operator to the 팀 설정 tab, which now owns team composition. */
   onGoDraw: () => void;
   onCreateMatch: () => void;
   onLineupMatch: (match: Match) => void;
@@ -253,7 +253,7 @@ export function PlayTab({
               </div>
               {isAdmin && (
                 <button type="button" className="blank__cta" onClick={onGoDraw}>
-                  팀짜기로 이동
+                  팀 설정으로 이동
                 </button>
               )}
             </div>

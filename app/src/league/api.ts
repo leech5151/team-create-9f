@@ -550,7 +550,7 @@ export async function saveGameScores(
 }
 
 
-// ── 팀짜기: writes land immediately, so a draw survives leaving the screen ──
+// ── 팀 설정: writes land immediately, so a draw survives leaving the screen ──
 
 /** Replaces the season's teams with `count` empty ones, named 1팀, 2팀, … */
 export async function createEmptyTeams(seasonId: string, count: number): Promise<void> {

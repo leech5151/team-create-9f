@@ -45,7 +45,7 @@ function readDeferred(seasonId: string): Set<string> {
 }
 
 /**
- * 상주리그 팀짜기 — team count, captains, then a hand-placed random draw.
+ * 상주리그 팀 설정 — team count, captains, then a hand-placed random draw.
  *
  * Every action writes straight to the database rather than building a draft in
  * memory, so a half-finished draw survives leaving the screen or a reload.
@@ -222,7 +222,7 @@ export function DrawTab({
     return (
       <div className="screen">
         <div className="eyebrow">상주리그</div>
-        <div className="title">팀짜기</div>
+        <div className="title">팀 설정</div>
         <div className="blank">
           <div className="blank__title">회차가 없어요</div>
           <div className="blank__sub">경기설정에서 회차를 먼저 만들어 주세요.</div>
@@ -239,7 +239,7 @@ export function DrawTab({
       <div className="rosterHead">
         <div className="rosterHead__left">
           <div className="rosterHead__titleRow">
-            <div className="rosterHead__title">팀짜기</div>
+            <div className="rosterHead__title">팀 설정</div>
           </div>
         </div>
         <div className="count">

@@ -6,6 +6,7 @@ import type {
   Screen,
   Section,
 } from '../types';
+import { MAX_LANE_NO } from './assign';
 
 const KEY = 'bowling-lane-draw/v1';
 
@@ -21,6 +22,11 @@ export interface PersistedState {
   screen: Screen;
   /** Operator-chosen lane count for 팀짜기; null follows the attendance. */
   laneCount: number | null;
+  /**
+   * Which lane the centre's block starts at. 8 lanes from 3 means 3~10, so the
+   * printed numbers match the house rather than always counting from 1.
+   */
+  firstLane: number;
   /** Current draw's lanes as member ids, so roster edits reconcile on load. */
   laneIds: string[][];
   queue: string[];
@@ -39,6 +45,7 @@ export function initialState(): PersistedState {
     section: 'home',
     screen: 'roster',
     laneCount: null,
+    firstLane: 1,
     laneIds: [],
     queue: [],
     placed: [],
@@ -58,6 +65,11 @@ function parseMember(raw: unknown): Member | null {
   if (typeof m.avg !== 'number' || !Number.isFinite(m.avg)) return null;
   return { id: m.id, name: m.name, gender: m.gender, avg: m.avg };
 }
+
+const clampFirstLane = (raw: unknown): number =>
+  typeof raw === 'number' && Number.isFinite(raw)
+    ? Math.min(MAX_LANE_NO, Math.max(1, Math.floor(raw)))
+    : 1;
 
 const asIdList = (raw: unknown, known: ReadonlySet<string>): string[] =>
   Array.isArray(raw) ? raw.filter((v): v is string => typeof v === 'string' && known.has(v)) : [];
@@ -132,6 +144,8 @@ export function loadState(): PersistedState {
     section: s.section === 'teams' || s.section === 'league' ? s.section : 'home',
     laneCount:
       typeof s.laneCount === 'number' && s.laneCount >= 1 ? Math.floor(s.laneCount) : null,
+    // Absent in states saved before start lanes existed — those all began at 1.
+    firstLane: clampFirstLane(s.firstLane),
     // A draw screen with no lanes has nothing to show — send it back to 명단.
     screen: laneIds.length === 0 && (screen === 'draw' || screen === 'result') ? 'roster' : screen,
     laneIds,

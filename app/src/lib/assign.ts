@@ -28,6 +28,8 @@ export function laneAverage(members: readonly Member[]): number {
 export const MAX_PER_LANE = 3;
 /** Lanes are booked in pairs; one table is two adjacent lanes. */
 export const LANES_PER_TABLE = 2;
+/** Highest lane number a house is assumed to have — bounds the start lane. */
+export const MAX_LANE_NO = 99;
 
 /** Fewest lanes that can seat everyone at three per lane. */
 export function minLaneCount(count: number): number {
@@ -286,10 +288,16 @@ export function buildLanes(
  * Rebuild displayable lanes from persisted ids. Tiers are recomputed from the
  * members the lanes actually contain, so the view stays self-consistent even
  * if the attendance list changed afterwards.
+ *
+ * This is where lane *numbers* come from — the stored draw is just lists of
+ * ids, so renumbering from a different start lane needs no re-draw. `buildLanes`
+ * numbers from 1 and its numbers are discarded; only these reach the screen.
  */
 export function hydrateLanes(
   laneIds: readonly string[][],
   byId: ReadonlyMap<string, Member>,
+  /** Lane number the first lane carries; the rest follow it. */
+  firstLane = 1,
 ): Lane[] {
   const present = laneIds
     .flat()
@@ -302,7 +310,7 @@ export function hydrateLanes(
       .map((id) => byId.get(id))
       .filter((m): m is Member => m !== undefined)
       .map((m) => ({ ...m, tier: tiers.get(m.id) ?? 3 }));
-    return { no: i + 1, members, avg: laneAverage(members) };
+    return { no: firstLane + i, members, avg: laneAverage(members) };
   });
 }
 

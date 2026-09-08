@@ -516,6 +516,268 @@ input {
 }
 
 /*
+ * 정모 스위치 — 이 브라우저에만 있는 세션 명단 ↔ 저장해서 공유되는 정모 명단.
+ * 켜져 있으면 지금 보고 있는 명단이 남들에게도 보이는 것이므로, 점을 켜서
+ * 상태가 한눈에 보이게 한다.
+ */
+.meetupToggle {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  background: #fff;
+  font-size: 11px;
+  font-weight: 800;
+  color: #6b6f76;
+}
+
+.meetupToggle__dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #c2c6cc;
+  flex: none;
+}
+
+.meetupToggle--on {
+  background: #fff1ec;
+  border-color: #ff4a21;
+  color: #c93a16;
+}
+
+.meetupToggle--on .meetupToggle__dot {
+  background: #ff4a21;
+}
+
+.meetupToggle:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+/* ── 정모 막대: 저장된 날짜들과 저장·삭제 ──────────────────── */
+
+.meetupBar {
+  margin-top: 10px;
+  padding: 10px 12px;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 74, 33, 0.25);
+  background: #fff8f5;
+}
+
+.meetupBar__dates {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.meetupBar__dates .chip {
+  padding: 5px 10px;
+  font-size: 11.5px;
+  font-weight: 800;
+}
+
+.meetupBar__actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 9px;
+}
+
+/* 날짜 칩 오른쪽의 캘린더 버튼 — 아래 월 캘린더를 여닫는다. */
+.meetupBar__cal {
+  flex: none;
+  width: 30px;
+  height: 30px;
+  border-radius: 9px;
+  border: 1px solid rgba(255, 74, 33, 0.3);
+  background: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #c93a16;
+}
+
+.meetupBar__cal svg {
+  width: 15px;
+  height: 15px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+}
+
+.meetupBar__cal--on {
+  background: #ff4a21;
+  border-color: #ff4a21;
+  color: #fff;
+}
+
+/* ── 정모 월 캘린더 ────────────────────────────────────────── */
+
+.mcal {
+  margin-top: 9px;
+  padding: 10px;
+  border-radius: 12px;
+  background: #fff;
+  border: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+.mcal__head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.mcal__nav {
+  flex: none;
+  width: 28px;
+  height: 28px;
+  border-radius: 9px;
+  background: #f1f0ec;
+  font-size: 16px;
+  font-weight: 800;
+  color: #14161a;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.mcal__title {
+  flex: 1;
+  text-align: center;
+  font-size: 12.5px;
+  font-weight: 800;
+  color: #14161a;
+  font-variant-numeric: tabular-nums;
+}
+
+.mcal__count {
+  margin-left: 6px;
+  font-style: normal;
+  font-size: 10px;
+  font-weight: 800;
+  color: #a8adb4;
+}
+
+.mcal__grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 2px;
+  margin-top: 8px;
+}
+
+.mcal__wd {
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 9.5px;
+  font-weight: 800;
+  color: #a8adb4;
+}
+
+.mcal__blank {
+  height: 30px;
+}
+
+.mcal__day {
+  height: 30px;
+  border-radius: 9px;
+  background: transparent;
+  font-size: 12px;
+  font-weight: 700;
+  color: #4a4f57;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-variant-numeric: tabular-nums;
+}
+
+/* 오늘은 옅은 테두리로만 — 정모가 있는 날의 검정과 다투지 않게. */
+.mcal__day--today {
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.18);
+}
+
+/* 저장된 정모가 있는 날. 이 검정이 '누르면 불러와진다'는 표시다. */
+.mcal__day--saved {
+  background: #14161a;
+  color: #fff;
+  font-weight: 800;
+}
+
+/* 지금 열려 있는 정모 — 저장 여부와 무관하게 주황 테두리로 짚어준다. */
+.mcal__day--on {
+  box-shadow: inset 0 0 0 2px #ff4a21;
+}
+
+.mcal__day:disabled {
+  color: #c2c6cc;
+  cursor: default;
+}
+
+.mcal__legend {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 9px;
+  font-size: 10px;
+  font-weight: 700;
+  color: #8a8f98;
+}
+
+.mcal__swatch {
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+  flex: none;
+}
+
+.mcal__swatch--saved {
+  background: #14161a;
+}
+
+.meetupBar__save {
+  flex: 1;
+  height: 36px;
+  border-radius: 11px;
+  background: #ff4a21;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.meetupBar__save:disabled {
+  background: #f0b8a8;
+}
+
+.meetupBar__ghost {
+  flex: none;
+  height: 36px;
+  padding: 0 12px;
+  border-radius: 11px;
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  background: #fff;
+  font-size: 12px;
+  font-weight: 800;
+  color: #6b6f76;
+}
+
+.meetupBar__ghost--del {
+  color: #c93a16;
+  border-color: rgba(201, 58, 22, 0.3);
+}
+
+.meetupBar__note {
+  margin-top: 8px;
+  font-size: 11px;
+  font-weight: 700;
+  color: #b07a68;
+}
+
+/*
  * 숫자와 단위를 한 줄에 — "30명", "12 / 30명 배정". 블록으로 쌓으면 단위가
  * 숫자 아래로 떨어지므로 베이스라인을 공유하는 한 줄로 붙인다.
  */
@@ -839,24 +1101,48 @@ input {
   color: #8a8f98;
 }
 
-.lanePlan__stepper {
+/*
+ * 레인 수와 시작 레인 — 한 줄에 나란히. 402px 폭에 두 스테퍼가 들어가야
+ * 하므로 버튼과 값이 한 줄짜리 치수로 좁다.
+ */
+.lanePlan__fields {
   display: flex;
   align-items: center;
-  gap: 2px;
+  gap: 12px;
   margin-left: auto;
 }
 
+.lanePlan__field {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.lanePlan__fieldK {
+  font-size: 10px;
+  font-weight: 800;
+  color: #a8adb4;
+  white-space: nowrap;
+}
+
+.lanePlan__stepper {
+  display: flex;
+  align-items: center;
+  gap: 1px;
+}
+
 .lanePlan__btn {
-  width: 30px;
-  height: 30px;
+  width: 28px;
+  height: 28px;
   border-radius: 9px;
   background: #f1f0ec;
-  font-size: 16px;
+  font-size: 15px;
   font-weight: 800;
   color: #14161a;
   display: flex;
   align-items: center;
   justify-content: center;
+  flex: none;
 }
 
 .lanePlan__btn:disabled {
@@ -865,22 +1151,24 @@ input {
 }
 
 .lanePlan__value {
-  min-width: 34px;
+  min-width: 24px;
   text-align: center;
-  font-size: 17px;
+  font-size: 16px;
   font-weight: 800;
   font-variant-numeric: tabular-nums;
 }
 
-.lanePlan__auto {
-  flex: none;
-  padding: 5px 10px;
+/* 되돌리기 — 안내 줄에 얹히는 작은 버튼. */
+.lanePlan__reset {
+  margin-left: 6px;
+  padding: 3px 8px;
   border-radius: 999px;
   border: 1px solid rgba(0, 0, 0, 0.12);
   background: #fff;
-  font-size: 10.5px;
+  font-size: 10px;
   font-weight: 800;
   color: #6b6f76;
+  vertical-align: 1px;
 }
 
 /* Alternating tint groups the lanes into their two-lane tables. */
@@ -891,24 +1179,42 @@ input {
   margin-top: 10px;
 }
 
+/*
+ * 한 칸 = 한 레인. 위에 레인 번호, 아래에 그 레인 인원. 시작 레인을 바꿀 수
+ * 있게 된 뒤로는 몇 번째 칸인지가 곧 레인 번호가 아니라서 번호를 적어둔다.
+ */
 .lanePlan__lane {
-  width: 26px;
-  height: 26px;
+  width: 30px;
+  height: 34px;
   border-radius: 8px;
   background: #f1f0ec;
   color: #4a4f57;
   font-size: 12px;
   font-weight: 800;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
+  gap: 1px;
   font-variant-numeric: tabular-nums;
+}
+
+.lanePlan__laneNo {
+  font-style: normal;
+  font-size: 8.5px;
+  font-weight: 800;
+  color: #a8adb4;
+  line-height: 1;
 }
 
 .lanePlan__lane--pair {
   background: #14161a;
   color: #fff;
   margin-right: 6px;
+}
+
+.lanePlan__lane--pair .lanePlan__laneNo {
+  color: rgba(255, 255, 255, 0.5);
 }
 
 .lanePlan__note {

@@ -262,7 +262,7 @@ export function LeagueScreen({ tab, onGoTab, isAdmin, onNotify }: Props) {
       ? attempt(() => saveGameScores(recordingMatch.id, entries), '경기 기록을 저장했어요')
       : Promise.resolve('기록할 대진을 찾지 못했습니다.');
 
-  // 팀짜기 writes go straight through; each returns null on success.
+  // 팀 설정 writes go straight through; each returns null on success.
   const createTeams = (teamCount: number) =>
     season
       ? attempt(() => createEmptyTeams(season.id, teamCount), `${teamCount}개 팀을 만들었어요`)

@@ -65,7 +65,7 @@ export const LEAGUE_TABS: readonly { key: LeagueTab; label: string; adminOnly?: 
   { key: 'schedule', label: '경기일정' },
   { key: 'standings', label: '경기순위' },
   { key: 'play', label: '경기설정', adminOnly: true },
-  { key: 'draw', label: '팀짜기', adminOnly: true },
+  { key: 'draw', label: '팀 설정', adminOnly: true },
   { key: 'players', label: '선수명단' },
 ];
 export type Phase = 'idle' | 'rolling' | 'landed';
