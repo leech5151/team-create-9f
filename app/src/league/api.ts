@@ -53,6 +53,12 @@ export interface Match {
   playedOn: string | null;
   /** Wall-clock start time as `HH:MM`, or null when not decided yet. */
   startTime: string | null;
+  /**
+   * 총점 가감 (지각 패널티 등) — 3게임 총점에 한 번만 더해진다. 게임별 승패는
+   * 건드리지 않고 총점 1승과 누적득점에만 반영된다. migration-007 참고.
+   */
+  homeTotalAdjust: number;
+  awayTotalAdjust: number;
 }
 
 /** Who actually bowled for a team in a given match. */
@@ -127,7 +133,9 @@ export async function fetchSnapshot(): Promise<LeagueSnapshot> {
     db.from('weeks').select('id,season_id,week_no,played_on').order('week_no'),
     db
       .from('matches')
-      .select('id,week_id,home_team_id,away_team_id,lane_no,played_on,start_time')
+      .select(
+        'id,week_id,home_team_id,away_team_id,lane_no,played_on,start_time,home_total_adjust,away_total_adjust',
+      )
       .order('played_on'),
     db.from('match_players').select('match_id,team_id,player_id'),
     db.from('game_scores').select('match_id,player_id,game_no,pins'),
@@ -177,6 +185,8 @@ export async function fetchSnapshot(): Promise<LeagueSnapshot> {
       playedOn: r.played_on,
       // Postgres returns `HH:MM:SS`; the UI only ever deals in `HH:MM`.
       startTime: r.start_time ? String(r.start_time).slice(0, 5) : null,
+      homeTotalAdjust: r.home_total_adjust ?? 0,
+      awayTotalAdjust: r.away_total_adjust ?? 0,
     })),
     lineups: check(lineups).map((r) => ({
       matchId: r.match_id,
@@ -507,18 +517,37 @@ export interface ScoreEntry {
   pins: number | null;
 }
 
+/** 총점 가감 — 경기별 팀별 한 번. 지각 패널티가 여기에 들어간다. */
+export interface TotalAdjust {
+  home: number;
+  away: number;
+}
+
 /**
- * Replaces the recorded scores for one match.
+ * Replaces the recorded scores for one match, and the 총점 가감 with them.
  *
  * Blank entries are deleted rather than stored as zero — a missing score means
  * "not entered yet", and the standings deliberately skip incomplete matches.
  * Storing 0 would instead count as a played game with no pins.
+ *
+ * The adjustment rides along because it is entered on the same sheet: saving
+ * the scores and the 지각 패널티 separately would let one land without the
+ * other and post a result the operator never saw.
  */
 export async function saveGameScores(
   matchId: string,
   entries: readonly ScoreEntry[],
+  adjust?: TotalAdjust,
 ): Promise<void> {
   const db = client();
+
+  if (adjust) {
+    const { error } = await db
+      .from('matches')
+      .update({ home_total_adjust: adjust.home, away_total_adjust: adjust.away })
+      .eq('id', matchId);
+    if (error) throw new Error(error.message);
+  }
 
   const filled = entries.filter((e) => e.pins !== null);
   const cleared = entries.filter((e) => e.pins === null);

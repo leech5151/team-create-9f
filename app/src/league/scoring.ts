@@ -10,6 +10,10 @@ import { GAMES_PER_MATCH, type GameNo, type SideInput } from './types';
  *
  * 여기에 대진 핸디캡이 더해진다 — 양 팀 점수 합의 차이만큼 약팀에 주는 보정으로,
  * 10 단위로 끊고 60 을 넘지 않는다.
+ *
+ * 마지막으로 총점 가감(지각 패널티 등)이 경기별로 팀에 한 번 적용된다. 이건
+ * 게임별 점수를 건드리지 않고 3게임 총점에만 더해지므로, 게임 3승은 그대로 두고
+ * 총점 1승과 누적득점만 바꾼다.
  */
 
 const GAME_NOS: readonly GameNo[] = [1, 2, 3];
@@ -67,8 +71,13 @@ export interface TeamTally {
   teamId: string;
   games: TeamGame[];
   scratchTotal: number;
-  /** Sum of the three handicapped games — contests the 4th point. */
+  /**
+   * Sum of the three handicapped games, plus `totalAdjust` — contests the 4th
+   * point. The per-game figures above deliberately exclude the adjustment.
+   */
   grandTotal: number;
+  /** 총점 가감 (지각 패널티 등) applied once. 0 when none was given. */
+  totalAdjust: number;
   /** Best single handicapped game, used as a later tiebreak. */
   highGame: number;
   /** Worst single handicapped game. */
@@ -109,11 +118,17 @@ export function tally(side: SideInput, extraPerGame = 0): TeamTally {
   const totals = games.map((g) => g.total);
   const highGame = Math.max(...totals);
   const lowGame = Math.min(...totals);
+  /*
+   * 총점 가감은 grandTotal 에만 더한다 — 게임별 total 에는 넣지 않으므로
+   * 게임 3승의 승자는 바뀌지 않고, 총점 1승과 누적득점만 움직인다.
+   * highGame·lowGame·spread 도 게임값 기준이라 영향을 받지 않는다.
+   */
   return {
     teamId: side.teamId,
     games,
     scratchTotal: games.reduce((sum, g) => sum + g.scratch, 0),
-    grandTotal: totals.reduce((sum, v) => sum + v, 0),
+    grandTotal: totals.reduce((sum, v) => sum + v, 0) + side.totalAdjust,
+    totalAdjust: side.totalAdjust,
     highGame,
     lowGame,
     spread: highGame - lowGame,

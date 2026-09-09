@@ -48,4 +48,12 @@ export interface SideInput {
   teamId: string;
   lineup: Appearance[];
   scores: GameScore[];
+  /**
+   * 총점 가감 — applied once to the 3-game total, not to each game.
+   *
+   * This is where 지각 패널티 lives: being late costs the team on the night's
+   * total without changing who won a given game. Signed, so it can add as well
+   * as deduct, and it belongs to the fixture rather than to a player.
+   */
+  totalAdjust: number;
 }

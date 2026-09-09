@@ -1,11 +1,13 @@
 import { useMemo, useState } from 'react';
-import type { GameScoreRow, Match, ScoreEntry } from '../../league/api';
+import type { GameScoreRow, Match, ScoreEntry, TotalAdjust } from '../../league/api';
 import type { GameNo, LeaguePlayer, SideInput } from '../../league/types';
 import { fixtureHandicaps, scoreMatch, type Decision } from '../../league/scoring';
 import { parseDate, shortDate } from '../../league/schedule';
 
 const GAMES: readonly GameNo[] = [1, 2, 3];
 const MAX_PINS = 300;
+/** 총점 가감 한도 — migration-007 의 체크 제약과 같은 값. */
+const MAX_TOTAL_ADJUST = 900;
 
 /** Keyed `playerId:gameNo` so a flat map covers both teams. */
 type Draft = Record<string, string>;
@@ -29,7 +31,7 @@ interface Props {
    * participants read a recorded night. Omit `onSave` alongside it.
    */
   readOnly?: boolean;
-  onSave?: (entries: ScoreEntry[]) => Promise<string | null>;
+  onSave?: (entries: ScoreEntry[], adjust: TotalAdjust) => Promise<string | null>;
   onClose: () => void;
 }
 
@@ -41,6 +43,31 @@ export function ScoreSheet({ match, home, away, existing, readOnly = false, onSa
   });
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  /*
+   * 총점 가감 — 지각 패널티가 여기에 들어간다. 게임별 점수와 달리 경기당 팀당
+   * 한 번이고 부호가 있으므로 문자열로 들고 있다가 저장할 때 숫자로 만든다.
+   */
+  const [adjust, setAdjust] = useState<Record<'home' | 'away', string>>(() => ({
+    home: match.homeTotalAdjust === 0 ? '' : String(match.homeTotalAdjust),
+    away: match.awayTotalAdjust === 0 ? '' : String(match.awayTotalAdjust),
+  }));
+
+  const sideKey = (side: Side): 'home' | 'away' =>
+    side.teamId === home.teamId ? 'home' : 'away';
+
+  /** 부호 하나만 맨 앞에 허용하고 세 자리까지. */
+  const setAdjustRaw = (side: Side, raw: string) => {
+    const sign = raw.startsWith('-') ? '-' : '';
+    const digits = raw.replace(/[^0-9]/g, '').slice(0, 3);
+    setAdjust((a) => ({ ...a, [sideKey(side)]: digits === '' ? sign : sign + digits }));
+  };
+
+  const adjustOf = (side: Side): number => {
+    const raw = adjust[sideKey(side)];
+    if (raw === '' || raw === '-') return 0;
+    const n = Number(raw);
+    return Number.isFinite(n) ? n : 0;
+  };
 
   const set = (playerId: string, gameNo: GameNo, raw: string) => {
     const digits = raw.replace(/[^0-9]/g, '').slice(0, 3);
@@ -149,10 +176,11 @@ export function ScoreSheet({ match, home, away, existing, readOnly = false, onSa
       scores: side.roster.flatMap((p) =>
         GAMES.map((g) => ({ playerId: p.id, gameNo: g, pins: numberAt(p.id, g) ?? 0 })),
       ),
+      totalAdjust: adjustOf(side),
     });
     return scoreMatch(toSide(home), toSide(away));
     // `draft` drives every number read inside; `complete` gates the whole thing.
-  }, [draft, complete, home, away]);
+  }, [draft, adjust, complete, home, away]);
 
   const submit = async () => {
     if (!onSave) return;
@@ -174,9 +202,21 @@ export function ScoreSheet({ match, home, away, existing, readOnly = false, onSa
       }
     }
 
+    for (const side of [home, away]) {
+      const n = adjustOf(side);
+      if (Math.abs(n) > MAX_TOTAL_ADJUST) {
+        return setError(
+          `${side.teamName} 총점 가감: -${MAX_TOTAL_ADJUST} ~ ${MAX_TOTAL_ADJUST} 사이로 입력해 주세요.`,
+        );
+      }
+    }
+
     setBusy(true);
     setError(null);
-    const message = await onSave(entries);
+    const message = await onSave(entries, {
+      home: adjustOf(home),
+      away: adjustOf(away),
+    });
     setBusy(false);
     if (message) setError(message);
     else onClose();
@@ -289,6 +329,39 @@ export function ScoreSheet({ match, home, away, existing, readOnly = false, onSa
             </div>
           </div>
         )}
+
+        {/*
+          총점 가감 — 게임 그리드 밖에 둔다. 게임별 값이 아니라 경기 총점에
+          한 번 붙는 값이어서, 게임 열 안에 넣으면 어느 게임에 적용된 것처럼
+          읽힌다. 게임 3승은 위 그리드로 이미 결정돼 있고 이 값은 총점 1승과
+          누적득점만 움직인다.
+        */}
+        {side.roster.length > 0 && (readOnly ? adjustOf(side) !== 0 : true) && (
+          <div className="tadj">
+            <span className="tadj__k">
+              총점 가감
+              <em>지각 등 · 총점에만 반영</em>
+            </span>
+            {readOnly ? (
+              <span className={`tadj__ro${adjustOf(side) < 0 ? ' tadj__ro--pen' : ''}`}>
+                {adjustOf(side) > 0 ? `+${adjustOf(side)}` : adjustOf(side)}
+              </span>
+            ) : (
+              <input
+                className="tadj__input"
+                value={adjust[sideKey(side)]}
+                onChange={(e) => setAdjustRaw(side, e.target.value)}
+                inputMode="numeric"
+                placeholder="0"
+                aria-label={`${side.teamName} 총점 가감`}
+                title="감점은 -30 처럼 앞에 - 를 붙이세요"
+              />
+            )}
+            <span className="tadj__v">
+              {totals.entered === 0 ? '–' : totals.total + adjustOf(side)}
+            </span>
+          </div>
+        )}
       </div>
     );
   };
@@ -303,7 +376,7 @@ export function ScoreSheet({ match, home, away, existing, readOnly = false, onSa
           {match.laneNo === null ? '레인 미정' : `${match.laneNo}번 레인`} —{' '}
           {readOnly
             ? '조회 전용입니다. 기록은 운영자만 수정할 수 있어요.'
-            : '실투 점수를 넣으면 핸디·패널티는 자동 반영됩니다.'}
+            : '실투 점수를 넣으면 핸디·패널티는 자동 반영됩니다. 지각 벌점은 아래 총점 가감에.'}
         </div>
 
         {renderSide(home, homeTotals)}
@@ -319,8 +392,10 @@ export function ScoreSheet({ match, home, away, existing, readOnly = false, onSa
               <span>{away.teamName}</span>
             </div>
             <div className="scorePreview__work">
-              실투 {preview.home.scratchTotal} : {preview.away.scratchTotal} → 핸디·패널티 반영{' '}
-              {preview.home.grandTotal} : {preview.away.grandTotal}
+              실투 {preview.home.scratchTotal} : {preview.away.scratchTotal} → 핸디·패널티
+              {(preview.home.totalAdjust !== 0 || preview.away.totalAdjust !== 0) &&
+                '·총점 가감'}{' '}
+              반영 {preview.home.grandTotal} : {preview.away.grandTotal}
             </div>
             <div className="scorePreview__games">
               {preview.gameDecisions.map((d, i) => (

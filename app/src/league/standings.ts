@@ -68,6 +68,8 @@ function sideOf(
       avg: p.avg,
     })),
     scores,
+    // 총점 가감은 경기에 붙는 값 — 어느 쪽 팀인지에 따라 골라 넘긴다.
+    totalAdjust: teamId === match.homeTeamId ? match.homeTotalAdjust : match.awayTotalAdjust,
   };
 }
 

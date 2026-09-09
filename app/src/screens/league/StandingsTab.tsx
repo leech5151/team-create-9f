@@ -112,6 +112,10 @@ export function StandingsTab({ snapshot, state, error, season, onRetry }: Props)
         대진 핸디캡: 양 팀 점수 합 차이만큼 약팀에 가산 · {MATCH_HANDICAP_STEP} 단위 ·
         최대 {MATCH_HANDICAP_MAX} · {MATCH_HANDICAP_STEP} 미만은 없음
       </div>
+      <div className="hintBox hintBox--tight">
+        총점 가감(지각 벌점 등)은 경기별로 3게임 총점에 한 번만 적용됩니다 — 게임 3승은 그대로
+        두고 총점 1승과 누적득점에 반영됩니다.
+      </div>
     </div>
   );
 }

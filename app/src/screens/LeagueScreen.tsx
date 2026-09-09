@@ -23,6 +23,7 @@ import {
   updateSeason,
   type Match,
   type ScoreEntry,
+  type TotalAdjust,
   type Season,
   type PlayerDraft,
 } from '../league/api';
@@ -257,9 +258,12 @@ export function LeagueScreen({ tab, onGoTab, isAdmin, onNotify }: Props) {
         )
       : Promise.resolve('수정할 대진을 찾지 못했습니다.');
 
-  const recordScores = (entries: ScoreEntry[]) =>
+  const recordScores = (entries: ScoreEntry[], adjust: TotalAdjust) =>
     recordingMatch
-      ? attempt(() => saveGameScores(recordingMatch.id, entries), '경기 기록을 저장했어요')
+      ? attempt(
+          () => saveGameScores(recordingMatch.id, entries, adjust),
+          '경기 기록을 저장했어요',
+        )
       : Promise.resolve('기록할 대진을 찾지 못했습니다.');
 
   // 팀 설정 writes go straight through; each returns null on success.
