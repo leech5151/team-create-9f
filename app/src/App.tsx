@@ -6,6 +6,7 @@ import { MemberSheet, type MemberEdit } from './components/MemberSheet';
 import { RollOverlay } from './components/RollOverlay';
 import { ShareSheet } from './components/ShareSheet';
 import { useInstallPrompt } from './hooks/useInstallPrompt';
+import { useVisualViewport } from './hooks/useVisualViewport';
 import { useAdminAuth } from './league/useAdminAuth';
 import { useMeetups } from './meetup/useMeetups';
 import { deleteMeetup, saveMeetup } from './meetup/api';
@@ -83,6 +84,8 @@ export default function App() {
   /** Pre-delete snapshot, restored by the toast's 실행 취소. */
   const undoBuffer = useRef<PersistedState | null>(null);
   const installPrompt = useInstallPrompt();
+  // 키보드가 올라와도 시트가 그 위에 남도록 보이는 뷰포트를 CSS 로 내보낸다.
+  useVisualViewport();
   const auth = useAdminAuth();
   const [loginOpen, setLoginOpen] = useState(false);
   // Not persisted: entering 상주리그 always lands on 메인.

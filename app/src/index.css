@@ -4045,7 +4045,10 @@ input {
 
 .shareScrim {
   position: absolute;
-  inset: 0;
+  left: 0;
+  right: 0;
+  top: var(--vv-top, 0px);
+  height: var(--vv-h, 100%);
   background: rgba(0, 0, 0, 0.45);
   display: flex;
   align-items: center;
@@ -4145,9 +4148,20 @@ input {
 
 /* ── Member editor sheet ───────────────────────────────────── */
 
+/*
+ * 시트는 '보이는' 뷰포트 안에 갇힌다.
+ *
+ * inset: 0 으로 두면 키보드가 올라왔을 때 시트 아래쪽 — 경기 기록에서는 저장
+ * 바까지 — 가 키보드 뒤로 들어간다. 키보드는 레이아웃 뷰포트를 줄이지 않아서
+ * dvh 로는 잡히지 않는다. --vv-* 는 useVisualViewport 가 채우고, 없으면
+ * 폴백값이 예전 동작(화면 전체)을 그대로 유지한다.
+ */
 .sheetScrim {
   position: absolute;
-  inset: 0;
+  left: 0;
+  right: 0;
+  top: var(--vv-top, 0px);
+  height: var(--vv-h, 100%);
   background: rgba(0, 0, 0, 0.45);
   display: flex;
   align-items: flex-end;
@@ -4488,6 +4502,22 @@ input {
   padding: 12px 20px calc(env(safe-area-inset-bottom, 0px) + 14px);
   background: #f4f3f0;
   border-top: 1px solid rgba(0, 0, 0, 0.07);
+}
+
+/*
+ * 키보드가 올라온 동안에는 바를 줄인다. 아이폰 13 같은 화면에서는 남는 높이가
+ * 400px 안팎이라 112px 짜리 바가 그 1/4 을 먹는다. 홈 인디케이터 여백도 이때는
+ * 키보드가 가리고 있으므로 뺀다.
+ */
+:root[data-keyboard='up'] .sheet__actions {
+  margin-top: 12px;
+  padding-top: 8px;
+  padding-bottom: 8px;
+}
+
+:root[data-keyboard='up'] .sheet__save,
+:root[data-keyboard='up'] .sheet__ghost {
+  height: 44px;
 }
 
 .sheet__save {
