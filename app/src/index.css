@@ -4163,6 +4163,21 @@ input {
   animation: slideUp 0.24s cubic-bezier(0.2, 0.7, 0.3, 1) both;
   max-height: 100%;
   overflow-y: auto;
+  /* 시트 끝에서 더 밀어도 뒤 화면이 따라 움직이지 않게. */
+  overscroll-behavior: contain;
+  /*
+   * `-webkit-overflow-scrolling: touch` 는 넣지 않는다. iOS 13 부터 관성
+   * 스크롤이 기본이라 불필요한데, 이 속성이 만드는 별도 합성 레이어가 아래
+   * 액션 바의 position: sticky 를 깨뜨린다.
+   */
+}
+
+/*
+ * 액션 바가 있는 시트는 아래 여백을 바가 직접 갖는다 — 시트에 남겨두면 바가
+ * 스크롤 바닥에 붙었을 때 그 아래로 빈 띠가 보인다.
+ */
+.sheet:has(.sheet__actions) {
+  padding-bottom: 0;
 }
 
 .sheet__title {
@@ -4454,10 +4469,25 @@ input {
   color: #fff;
 }
 
+/*
+ * 저장 줄은 시트 바닥에 고정한다.
+ *
+ * 기록 시트는 선수 6명 × 3게임이라 내용이 화면보다 길어서, 같이 흘러가면
+ * 저장까지 스크롤해야 했다. iOS 에서는 거기까지 닿지 않는 문제도 있었다 —
+ * 스크롤 컨테이너의 아래 안전영역 패딩이 스크롤 높이에 잡히지 않아 마지막
+ * 한 줄이 잘렸다. 바를 붙박아 두면 스크롤 끝까지 가지 않아도 눌린다.
+ */
 .sheet__actions {
+  position: sticky;
+  bottom: 0;
+  z-index: 1;
   display: flex;
   gap: 8px;
-  margin-top: 20px;
+  /* 좌우 음수 마진으로 시트 폭을 꽉 채워, 뒤 내용이 옆으로 비치지 않게. */
+  margin: 20px -20px 0;
+  padding: 12px 20px calc(env(safe-area-inset-bottom, 0px) + 14px);
+  background: #f4f3f0;
+  border-top: 1px solid rgba(0, 0, 0, 0.07);
 }
 
 .sheet__save {
