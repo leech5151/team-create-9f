@@ -1,7 +1,7 @@
 import type { Lane, Tier } from '../types';
 import { TIERS } from '../types';
 import { TIER_COLOR } from '../theme';
-import { todayLabel } from './format';
+import { todayLabel, type GameLanes } from './format';
 
 /**
  * Renders the lane assignment as a PNG for the clipboard or a share sheet.
@@ -27,11 +27,16 @@ const DOT_R = 5;
 const DOT_GAP = 9;
 const NAME_GAP = 20;
 
-const INK = '#14161a';
-const MUTED = '#8a8f98';
+/*
+ * 다크 팔레트 — 공유 팝업(#14161a)과 같은 결. 채팅앱 말풍선은 대개 밝은
+ * 바탕이라, 어두운 카드가 스레드 안에서 한 덩어리로 또렷하게 떨어진다.
+ * 캔버스에는 투명도를 겹칠 배경이 없으므로 앱의 rgba 대신 불투명 색을 쓴다.
+ */
+const INK = '#ffffff';
+const MUTED = '#9aa2ad';
 const ACCENT = '#ff4a21';
-const SURFACE = '#ffffff';
-const BG = '#f4f3f0';
+const SURFACE = '#1b1f26';
+const BG = '#0f1115';
 
 /**
  * The stack the app itself renders in. Named families only — a canvas cannot
@@ -71,14 +76,24 @@ function dot(ctx: CanvasRenderingContext2D, x: number, y: number, tier: Tier): v
   ctx.fill();
 }
 
+/** Heading above each game's block when more than one is drawn. */
+const GAME_HEAD_H = 42;
+
 /**
  * Draws the card and hands back a PNG blob.
+ *
+ * Takes a list of games so a whole night's 기록 shares as one image: several
+ * separate PNGs would arrive in a chat out of order, and the reader wants to
+ * compare the games anyway. A single game is just a list of one.
  *
  * Rejects when the browser gives no 2d context or refuses to encode — callers
  * fall back to the text share rather than failing silently.
  */
-export async function laneImageBlob(game: number, lanes: readonly Lane[]): Promise<Blob> {
-  const height = HEAD_H + lanes.length * ROW_H + FOOT_H;
+export async function laneImageBlob(games: readonly GameLanes[]): Promise<Blob> {
+  const multi = games.length > 1;
+  const laneRows = games.reduce((n, g) => n + g.lanes.length, 0);
+  const height =
+    HEAD_H + laneRows * ROW_H + (multi ? games.length * GAME_HEAD_H : 0) + FOOT_H;
   const scale = Math.min(3, Math.max(2, Math.round(window.devicePixelRatio || 1)));
 
   const canvas = document.createElement('canvas');
@@ -95,14 +110,56 @@ export async function laneImageBlob(game: number, lanes: readonly Lane[]): Promi
   // ── Header ──
   ctx.fillStyle = INK;
   ctx.font = font(34, 800);
-  ctx.fillText(`GAME ${game} 레인 배정`, PAD, 62);
+  ctx.fillText(
+    multi ? '레인 배정 기록' : `GAME ${games[0]?.game ?? 1} 레인 배정`,
+    PAD,
+    62,
+  );
   ctx.fillStyle = MUTED;
   ctx.font = font(20, 600);
-  ctx.fillText(`${todayLabel()} 정기모임 · ${lanes.length}레인`, PAD, 92);
+  ctx.fillText(
+    multi
+      ? `${todayLabel()} 정기모임 · ${games.length}게임`
+      : `${todayLabel()} 정기모임 · ${games[0]?.lanes.length ?? 0}레인`,
+    PAD,
+    92,
+  );
 
-  // ── One card per lane ──
+  // ── One card per lane, grouped by game ──
+  let y = HEAD_H;
+  for (const { game, lanes } of games) {
+    if (multi) {
+      ctx.fillStyle = INK;
+      ctx.font = font(22, 800);
+      ctx.fillText(`GAME ${game}`, PAD, y + 26);
+      ctx.fillStyle = MUTED;
+      ctx.font = font(16, 700);
+      ctx.textAlign = 'right';
+      ctx.fillText(`${lanes.length}레인 · ${lanes.reduce((n, l) => n + l.members.length, 0)}명`, W - PAD, y + 26);
+      ctx.textAlign = 'left';
+      y += GAME_HEAD_H;
+    }
+    y = drawLanes(ctx, lanes, y);
+  }
+
+  drawFooter(ctx, height);
+
+  return await new Promise<Blob>((resolve, reject) => {
+    canvas.toBlob(
+      (blob) => (blob ? resolve(blob) : reject(new Error('이미지 변환에 실패했어요'))),
+      'image/png',
+    );
+  });
+}
+
+/** Draws one game's lane cards from `top`, returning the y it finished at. */
+function drawLanes(
+  ctx: CanvasRenderingContext2D,
+  lanes: readonly Lane[],
+  top: number,
+): number {
   lanes.forEach((lane, i) => {
-    const y = HEAD_H + i * ROW_H;
+    const y = top + i * ROW_H;
     const h = ROW_H - 10;
 
     ctx.fillStyle = SURFACE;
@@ -148,8 +205,11 @@ export async function laneImageBlob(game: number, lanes: readonly Lane[]): Promi
     ctx.fillText(`AVG ${lane.avg}`, W - PAD - 14, y + h / 2 + 7);
     ctx.textAlign = 'left';
   });
+  return top + lanes.length * ROW_H;
+}
 
-  // ── Footer: what the dot colours mean, then the mark ──
+/** Tier legend and the mark, along the bottom. */
+function drawFooter(ctx: CanvasRenderingContext2D, height: number): void {
   ctx.font = font(17, 700);
   let lx = PAD;
   for (const t of TIERS) {
@@ -165,13 +225,6 @@ export async function laneImageBlob(game: number, lanes: readonly Lane[]): Promi
   ctx.textAlign = 'right';
   ctx.fillText('9FRAME', W - PAD, height - 20);
   ctx.textAlign = 'left';
-
-  return await new Promise<Blob>((resolve, reject) => {
-    canvas.toBlob(
-      (blob) => (blob ? resolve(blob) : reject(new Error('이미지 변환에 실패했어요'))),
-      'image/png',
-    );
-  });
 }
 
 export type ImageShareResult = 'copied' | 'shared' | 'downloaded';
@@ -184,12 +237,10 @@ export type ImageShareResult = 'copied' | 'shared' | 'downloaded';
  * three different capabilities, so the caller is told which one happened rather
  * than being left to guess what the user should look for.
  */
-export async function shareLaneImage(
-  game: number,
-  lanes: readonly Lane[],
-): Promise<ImageShareResult> {
-  const blob = await laneImageBlob(game, lanes);
-  const name = `game${game}-lanes.png`;
+export async function shareLaneImage(games: readonly GameLanes[]): Promise<ImageShareResult> {
+  const blob = await laneImageBlob(games);
+  const name =
+    games.length === 1 ? `game${games[0]!.game}-lanes.png` : 'lanes.png';
 
   if (typeof ClipboardItem === 'function' && navigator.clipboard?.write) {
     try {
@@ -203,7 +254,9 @@ export async function shareLaneImage(
   const file = new File([blob], name, { type: 'image/png' });
   if (typeof navigator.canShare === 'function' && navigator.canShare({ files: [file] })) {
     try {
-      await navigator.share({ files: [file], title: `GAME ${game} 레인 배정` });
+      const title =
+        games.length === 1 ? `GAME ${games[0]!.game} 레인 배정` : '레인 배정 기록';
+      await navigator.share({ files: [file], title });
       return 'shared';
     } catch (e) {
       // A cancelled share is the user's decision — do not then download a file.

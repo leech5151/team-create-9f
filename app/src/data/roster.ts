@@ -1,4 +1,4 @@
-import type { Gender, Member } from '../types';
+import type { Gender, HistoryEntry, Member } from '../types';
 
 /**
  * Sample roster from the design prototype (30 members).
@@ -70,11 +70,12 @@ const SAMPLE_GAME_1_NAMES = [
 
 const idByName = new Map(SAMPLE_ROSTER.map((m) => [m.name, m.id]));
 
-export const SAMPLE_HISTORY = [
+export const SAMPLE_HISTORY: HistoryEntry[] = [
   {
     game: 1,
     lanes: SAMPLE_GAME_1_NAMES.map((lane) =>
       lane.map((name) => idByName.get(name)).filter((id): id is string => id !== undefined),
     ),
+    firstLane: 1,
   },
 ];

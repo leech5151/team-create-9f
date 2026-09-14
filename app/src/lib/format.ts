@@ -18,3 +18,23 @@ export function shareText(game: number, lanes: readonly Lane[]): string {
   const body = lanes.map((l) => `${l.no}번  ${namesLine(l)}  (AVG ${l.avg})`);
   return [header, ...body].join('\n');
 }
+
+/** One game's lanes, as 기록 holds them. */
+export interface GameLanes {
+  game: number;
+  lanes: readonly Lane[];
+}
+
+/**
+ * Every game in one message, for sharing a night's 기록 at once.
+ *
+ * The date heads the whole thing rather than repeating per game — pasted into
+ * a chat it reads as one post, not as several stacked copies of `shareText`.
+ */
+export function shareGamesText(games: readonly GameLanes[]): string {
+  const header = `${todayLabel()} 정기모임 레인 배정`;
+  const blocks = games.map(({ game, lanes }) =>
+    [`[GAME ${game}]`, ...lanes.map((l) => `${l.no}번  ${namesLine(l)}  (AVG ${l.avg})`)].join('\n'),
+  );
+  return [header, ...blocks].join('\n\n');
+}

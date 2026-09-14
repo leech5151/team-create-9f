@@ -40,6 +40,14 @@ export interface HistoryEntry {
   game: number;
   /** Member ids per lane, lane order preserved. */
   lanes: string[][];
+  /**
+   * Lane number the first lane carried. Without it a past game would be
+   * renumbered from 1 whenever the start lane changes, so 기록 and the share
+   * text would name lanes the group never bowled on.
+   *
+   * Absent in entries saved before start lanes existed — those all began at 1.
+   */
+  firstLane: number;
 }
 
 /**

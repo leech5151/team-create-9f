@@ -118,7 +118,10 @@ export function loadState(): PersistedState {
           const e = h as Record<string, unknown>;
           if (typeof e.game !== 'number' || !Array.isArray(e.lanes)) return null;
           const lanes = e.lanes.map((l) => asIdList(l, ids)).filter((l) => l.length > 0);
-          return lanes.length > 0 ? { game: e.game, lanes } : null;
+          // firstLane 이전에 저장된 기록은 모두 1번부터였다.
+          return lanes.length > 0
+            ? { game: e.game, lanes, firstLane: clampFirstLane(e.firstLane) }
+            : null;
         })
         .filter((h): h is HistoryEntry => h !== null)
     : [];

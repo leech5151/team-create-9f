@@ -22,7 +22,7 @@ import {
   minLaneCount,
   tierMap,
 } from './lib/assign';
-import { shareText } from './lib/format';
+import { shareGamesText, type GameLanes } from './lib/format';
 import { shareLaneImage } from './lib/shareImage';
 import { clearState, initialState, loadState, saveState, type PersistedState } from './lib/storage';
 import { HistoryScreen } from './screens/HistoryScreen';
@@ -75,7 +75,11 @@ function newMemberId(): string {
 
 export default function App() {
   const [state, setState] = useState<PersistedState>(loadState);
-  const [shareOpen, setShareOpen] = useState(false);
+  /**
+   * What the share popup is showing: the game just drawn, or the games picked
+   * on 기록. Null when it is closed.
+   */
+  const [sharing, setSharing] = useState<GameLanes[] | null>(null);
   const [editMode, setEditMode] = useState(false);
   const [editing, setEditing] = useState<Member | null>(null);
   const [adding, setAdding] = useState(false);
@@ -320,7 +324,7 @@ export default function App() {
       ...s,
       screen: 'result',
       history: [
-        { game: s.game, lanes: s.laneIds },
+        { game: s.game, lanes: s.laneIds, firstLane: s.firstLane },
         ...s.history.filter((h) => h.game !== s.game),
       ],
     }));
@@ -517,21 +521,30 @@ export default function App() {
   };
 
   // ── Share ──────────────────────────────────────────────────
+  /** Whatever the popup is showing; empty while it is closed. */
+  const sharedGames = sharing ?? [];
+  const shareTitle =
+    sharedGames.length === 1 ? `GAME ${sharedGames[0]!.game} 레인 배정` : '레인 배정 기록';
+
   const copyText = async () => {
-    const text = shareText(state.game, lanes);
+    if (sharedGames.length === 0) return;
     try {
-      await navigator.clipboard.writeText(text);
-      flash('배정 결과를 복사했어요');
+      await navigator.clipboard.writeText(shareGamesText(sharedGames));
+      flash(
+        sharedGames.length === 1
+          ? '배정 결과를 복사했어요'
+          : `${sharedGames.length}게임을 복사했어요`,
+      );
     } catch {
       flash('복사에 실패했어요');
     }
   };
 
   const nativeShare = async () => {
-    const text = shareText(state.game, lanes);
+    if (sharedGames.length === 0) return;
     if (typeof navigator.share === 'function') {
       try {
-        await navigator.share({ title: `GAME ${state.game} 레인 배정`, text });
+        await navigator.share({ title: shareTitle, text: shareGamesText(sharedGames) });
         return;
       } catch {
         // Cancelled or unsupported payload — fall through to clipboard.
@@ -544,9 +557,10 @@ export default function App() {
    * The lane card as a PNG. Where it lands depends on the browser, so the
    * toast names what actually happened rather than always claiming 복사.
    */
-  const copyImage = async () => {
+  const copyImageOf = async (games: readonly GameLanes[]) => {
+    if (games.length === 0) return flash('공유할 배정이 없어요');
     try {
-      const how = await shareLaneImage(state.game, lanes);
+      const how = await shareLaneImage(games);
       flash(
         how === 'copied'
           ? '이미지를 복사했어요'
@@ -559,6 +573,23 @@ export default function App() {
       flash(e instanceof Error ? e.message : '이미지 복사에 실패했어요');
     }
   };
+
+  const copyImage = () => copyImageOf(sharedGames);
+
+  /**
+   * 기록 화면의 지난 게임들. Lane numbers come from each entry's own
+   * `firstLane`, so a past game keeps the numbers it was bowled on even after
+   * the start lane changes.
+   */
+  const historyGames = useMemo<GameLanes[]>(
+    () =>
+      state.history
+        .slice()
+        .sort((a, b) => a.game - b.game)
+        .map((h) => ({ game: h.game, lanes: hydrateLanes(h.lanes, byId, h.firstLane) })),
+    [state.history, byId],
+  );
+
 
   // ── Bottom bar wiring ──────────────────────────────────────
   const ctaLabel = (() => {
@@ -736,12 +767,15 @@ export default function App() {
             priorHistory={priorHistory}
             view={state.resultView}
             onChangeView={(view: ResultView) => setState((s) => ({ ...s, resultView: view }))}
-            onShare={() => setShareOpen(true)}
+            onShare={() => setSharing([{ game: state.game, lanes }])}
           />
         )}
 
         {teams && state.screen === 'history' && (
-          <HistoryScreen history={state.history} byId={byId} />
+          <HistoryScreen
+            games={historyGames}
+            onShare={(g) => setSharing(g.length === 0 ? null : [...g])}
+          />
         )}
 
         {league && (
@@ -763,11 +797,10 @@ export default function App() {
         />
       )}
 
-      {shareOpen && (
+      {sharing && (
         <ShareSheet
-          game={state.game}
-          lanes={lanes}
-          onClose={() => setShareOpen(false)}
+          games={sharing}
+          onClose={() => setSharing(null)}
           onShare={nativeShare}
           onCopy={copyText}
           onCopyImage={() => void copyImage()}

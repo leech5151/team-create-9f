@@ -3888,6 +3888,10 @@ input {
   margin-top: 18px;
 }
 
+.histHead .histSub {
+  max-width: 30ch;
+}
+
 .histCard {
   background: #fff;
   border-radius: 16px;
@@ -3895,11 +3899,134 @@ input {
   padding: 14px;
 }
 
+/* 제목과 전체 공유 버튼이 한 줄. */
+.histHead {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.histHead__actions,
+.histCard__actions {
+  display: flex;
+  gap: 6px;
+  flex: none;
+}
+
+.histCard__actions {
+  margin-top: 10px;
+  justify-content: flex-end;
+}
+
+.histBtn {
+  padding: 7px 11px;
+  border-radius: 999px;
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  background: #fff;
+  font-size: 11px;
+  font-weight: 800;
+  color: #6b6f76;
+  white-space: nowrap;
+}
+
+.histBtn--strong {
+  background: #14161a;
+  border-color: #14161a;
+  color: #fff;
+}
+
+/* 카드 머리 전체가 펼침 버튼 — 누를 곳이 화살표 하나뿐이면 찾기 어렵다. */
 .histCard__head {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
   gap: 8px;
+  width: 100%;
+  text-align: left;
+}
+
+.histCard__meta {
+  margin-left: auto;
+}
+
+.histCard__caret {
+  flex: none;
+  font-size: 17px;
+  font-weight: 800;
+  line-height: 1;
+  color: #c2c6cc;
+  transform: rotate(90deg);
+  transition: transform 0.18s ease;
+}
+
+.histCard__caret--on {
+  transform: rotate(-90deg);
+  color: #ff4a21;
+}
+
+/* ── 펼친 기록: 결과 화면과 같은 레인 카드 ────────────────── */
+
+.histResult {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.histResult__lane {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px;
+  border-radius: 12px;
+  background: #f7f6f3;
+}
+
+.histResult__no {
+  flex: none;
+  width: 30px;
+  height: 30px;
+  border-radius: 10px;
+  background: #14161a;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.histResult__members {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+/* 레인 줄이 이미 회색이라 기본 회색 타일은 묻힌다 — 여기서만 흰 타일로. */
+.histResult .memTile {
+  background: #fff;
+}
+
+.histResult__avg {
+  flex: none;
+  text-align: right;
+}
+
+.histResult__avgK {
+  font-size: 9px;
+  font-weight: 800;
+  color: #a8adb4;
+}
+
+.histResult__avgV {
+  font-size: 14px;
+  font-weight: 800;
+  color: #14161a;
+  font-variant-numeric: tabular-nums;
 }
 
 .histCard__title {
@@ -4058,15 +4185,29 @@ input {
   overscroll-behavior: contain;
 }
 
+/*
+ * 기록 전체를 띄우면 게임 수만큼 길어지므로 카드 안에서 스크롤된다. 아래
+ * 공유/복사 줄은 붙박이라, 끝까지 끌어내리지 않아도 누를 수 있다.
+ */
 .shareCard {
   width: 100%;
   background: #14161a;
   border-radius: 22px;
-  padding: 20px;
+  padding: 20px 20px 0;
   color: #fff;
   animation: riseIn 0.25s ease both;
   max-height: 100%;
   overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+/* 여러 게임일 때의 게임 머리. */
+.shareCard__game {
+  margin-top: 16px;
+  font-size: 12px;
+  font-weight: 800;
+  color: #ff7a5c;
+  letter-spacing: 0.02em;
 }
 
 .shareCard__head {
@@ -4119,10 +4260,17 @@ input {
  * 공유하기가 글자만 겨우 들어갈 만큼 좁아진다.
  */
 .shareActions {
+  position: sticky;
+  bottom: 0;
+  z-index: 1;
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
-  margin-top: 14px;
+  /* 좌우 음수 마진으로 카드 폭을 꽉 채워, 뒤 내용이 옆으로 비치지 않게. */
+  margin: 14px -20px 0;
+  padding: 12px 20px calc(env(safe-area-inset-bottom, 0px) + 16px);
+  background: #14161a;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .shareActions__primary {
