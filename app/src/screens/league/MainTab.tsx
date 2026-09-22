@@ -129,7 +129,7 @@ export function MainTab({ snapshot, state, error, season, onRetry }: Props) {
         <>
           <div className="sectionLabel">
             MVP
-            <span className="sectionLabel__note">실투 에버 · 같으면 게임 수 順</span>
+            <span className="sectionLabel__note">실투 에버 10단위 · 같으면 게임 수 順</span>
           </div>
           <div className="statList">
             {mvps.map((s, i) => (
@@ -139,9 +139,9 @@ export function MainTab({ snapshot, state, error, season, onRetry }: Props) {
                 <span className="statRow2__sub">
                   {s.appearances}경기 · {s.games}게임 · 총점 {s.totalPins} · 하이 {s.highGame}
                 </span>
-                {/* 순위는 반올림한 에버로, 실제 에버는 괄호 안에 작게. */}
+                {/* 순위는 10단위로 끊은 에버로, 실제 에버는 괄호 안에 작게. */}
                 <span className="statRow2__value">
-                  {s.average}
+                  {s.rankAverage}
                   <em className="statRow2__exact">({s.exactAverage.toFixed(1)})</em>
                 </span>
               </div>
