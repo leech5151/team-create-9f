@@ -18,10 +18,17 @@ export interface PlayerStat {
   /** Matches the player was named in the line-up for. */
   appearances: number;
   games: number;
-  /** Sum of scratch pins — the MVP measure. */
+  /** Sum of scratch pins. */
   totalPins: number;
-  /** Scratch average over the games played, rounded. */
+  /**
+   * Scratch average, rounded to a whole pin — the MVP measure.
+   *
+   * The league ranks on the rounded figure, so two bowlers a fraction apart
+   * are treated as level and the tiebreak decides between them.
+   */
   average: number;
+  /** The unrounded average, shown beside `average` as the actual figure. */
+  exactAverage: number;
   /** Best single game. */
   highGame: number;
   /**
@@ -54,13 +61,15 @@ export function playerStats(snapshot: LeagueSnapshot, seasonId: string): PlayerS
   for (const [playerId, { games, total, high }] of acc) {
     const player = playerById.get(playerId);
     if (!player || games === 0) continue;
-    const average = Math.round(total / games);
+    const exactAverage = total / games;
+    const average = Math.round(exactAverage);
     stats.push({
       player,
       appearances: appearanceCount.get(playerId) ?? 0,
       games,
       totalPins: total,
       average,
+      exactAverage,
       highGame: high,
       delta: player.avg === null ? null : average - player.avg,
     });
@@ -68,14 +77,21 @@ export function playerStats(snapshot: LeagueSnapshot, seasonId: string): PlayerS
   return stats;
 }
 
-/** MVP order: most scratch pins, then higher average as the tiebreak. */
-export function byTotalPins(stats: readonly PlayerStat[]): PlayerStat[] {
+/**
+ * MVP order: highest 에버 first.
+ *
+ * Ranked on the rounded average, not the exact one, so the standings match the
+ * number people read off the screen. Level on that, the bowler with more games
+ * ranks higher — an average over nine games has been earned against more of the
+ * season than the same average over three.
+ */
+export function byAverage(stats: readonly PlayerStat[]): PlayerStat[] {
   return stats
     .slice()
     .sort(
       (a, b) =>
-        b.totalPins - a.totalPins ||
         b.average - a.average ||
+        b.games - a.games ||
         a.player.name.localeCompare(b.player.name, 'ko'),
     );
 }
