@@ -21,6 +21,29 @@ function isIosDevice(): boolean {
 }
 
 /**
+ * In-app browsers that cannot add anything to the home screen.
+ *
+ * This is the usual reason installing "doesn't work" on an iPhone: the link
+ * arrives in a chat and opens inside that app's own web view, whose share menu
+ * has no 홈 화면에 추가 at all. Nothing on the page can fix that — the user has
+ * to reopen the link in Safari — so the name is surfaced to say which app.
+ */
+const IN_APP_BROWSERS: readonly { pattern: RegExp; name: string }[] = [
+  { pattern: /KAKAOTALK/i, name: '카카오톡' },
+  { pattern: /NAVER\(inapp|NAVER /i, name: '네이버 앱' },
+  { pattern: /Instagram/i, name: '인스타그램' },
+  { pattern: /FBAN|FBAV/i, name: '페이스북' },
+  { pattern: /Line\//i, name: '라인' },
+  { pattern: /DaumApps/i, name: '다음 앱' },
+];
+
+function inAppBrowserName(): string | null {
+  if (typeof navigator === 'undefined') return null;
+  const ua = navigator.userAgent;
+  return IN_APP_BROWSERS.find((b) => b.pattern.test(ua))?.name ?? null;
+}
+
+/**
  * Drives the install button.
  *
  * There is nothing to dismiss: the button is shown whenever the app is running
@@ -78,6 +101,8 @@ export function useInstallPrompt() {
     canPrompt: deferred !== null,
     /** iOS needs Share-sheet instructions instead of a dialog. */
     isIos: ios,
+    /** Name of the in-app browser in use, or null in a real browser. */
+    inAppBrowser: inAppBrowserName(),
     /** What to say when the browser gives us no dialog to open. */
     hint: ios
       ? '공유 버튼 → “홈 화면에 추가”를 누르면 앱처럼 열려요'

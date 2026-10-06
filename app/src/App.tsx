@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { BottomBar } from './components/BottomBar';
 import { InstallPill } from './components/InstallBanner';
+import { InstallGuideSheet } from './components/InstallGuideSheet';
 import { AddMembersSheet, type MemberDraft } from './components/AddMembersSheet';
 import { MemberSheet, type MemberEdit } from './components/MemberSheet';
 import { RollOverlay } from './components/RollOverlay';
@@ -92,6 +93,8 @@ export default function App() {
   useVisualViewport();
   const auth = useAdminAuth();
   const [loginOpen, setLoginOpen] = useState(false);
+  /** 설치 다이얼로그가 없는 브라우저에서 띄우는 안내. */
+  const [installGuide, setInstallGuide] = useState(false);
   // Not persisted: entering 상주리그 always lands on 메인.
   const [leagueTabState, setLeagueTabState] = useState<LeagueTab>('main');
 
@@ -667,10 +670,13 @@ export default function App() {
             {showInstall && (
               <InstallPill
                 onClick={() => {
-                  // Chromium can go straight to its own dialog. Everywhere else
-                  // installing is a browser-menu step we can only point at.
+                  /*
+                   * Chromium can go straight to its own dialog. Everywhere else
+                   * — iOS always, since it has no install API — the steps live
+                   * in a browser menu, so show how to find them.
+                   */
                   if (installPrompt.canPrompt) void installPrompt.install();
-                  else flash(installPrompt.hint);
+                  else setInstallGuide(true);
                 }}
               />
             )}
@@ -804,6 +810,14 @@ export default function App() {
           onShare={nativeShare}
           onCopy={copyText}
           onCopyImage={() => void copyImage()}
+        />
+      )}
+
+      {installGuide && (
+        <InstallGuideSheet
+          isIos={installPrompt.isIos}
+          inAppBrowser={installPrompt.inAppBrowser}
+          onClose={() => setInstallGuide(false)}
         />
       )}
 

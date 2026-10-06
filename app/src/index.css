@@ -4369,6 +4369,83 @@ input {
   margin-top: 6px;
 }
 
+/* ── 설치 안내 단계 ────────────────────────────────────────── */
+
+.guideSteps {
+  list-style: none;
+  margin: 16px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.guideSteps li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: #fff;
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  font-size: 13.5px;
+  font-weight: 600;
+  color: #4a4f57;
+  line-height: 1.5;
+}
+
+.guideSteps li b {
+  font-weight: 800;
+  color: #14161a;
+}
+
+/* 보조 설명은 줄을 바꿔 단계 문장과 섞이지 않게. */
+.guideSteps li em {
+  flex: 1 1 100%;
+  font-style: normal;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: #a8adb4;
+}
+
+.guideSteps__n {
+  flex: none;
+  width: 20px;
+  height: 20px;
+  border-radius: 7px;
+  background: #ff4a21;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 800;
+  margin-right: 4px;
+}
+
+/* iOS 공유 아이콘 — 문장 안에서 어느 버튼인지 가리킨다. */
+.guideSteps__icon {
+  display: inline-flex;
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+  background: #f1f0ec;
+  align-items: center;
+  justify-content: center;
+  color: #1f5fe0;
+}
+
+.guideSteps__icon svg {
+  width: 13px;
+  height: 13px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
 /* ── Bulk entry rows: 이름 · 성별 · 점수 on one line ───────── */
 
 .bulkHead {

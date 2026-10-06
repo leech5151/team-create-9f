@@ -16,9 +16,14 @@
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
     <meta name="apple-mobile-web-app-title" content="9프레임" />
-    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <!--
+      %BASE_URL% 로 두어야 GitHub Pages 의 /<repo>/ 아래에서도 맞는다. 루트
+      절대경로면 아이콘이 404 가 되고, iOS 는 그럴 때 홈 화면 아이콘을 페이지
+      스크린샷으로 대체해 버린다.
+    -->
+    <link rel="apple-touch-icon" href="%BASE_URL%apple-touch-icon.png" />
 
-    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" />
+    <link rel="icon" type="image/png" sizes="32x32" href="%BASE_URL%favicon-32.png" />
     <link
       rel="stylesheet"
       href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css"
