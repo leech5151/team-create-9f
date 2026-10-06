@@ -113,7 +113,12 @@ export function LineupSheet({ match, home, away, onSave, onClose }: Props) {
   return (
     <div className="sheetScrim" onClick={onClose} role="dialog" aria-modal="true" aria-label="출전 선수">
       <div className="sheet" onClick={(e) => e.stopPropagation()}>
-        <div className="sheet__title">출전 선수</div>
+        <div className="sheet__head">
+          <div className="sheet__title">출전 선수</div>
+          <button type="button" className="sheet__x" onClick={onClose} aria-label="닫기">
+            ×
+          </button>
+        </div>
         <div className="sheet__hint">
           {match.playedOn ? shortDate(parseDate(match.playedOn)!) : '날짜 미정'}
           {match.startTime ? ` ${match.startTime}` : ''} — 이 경기에 나가는 선수만 남기세요.

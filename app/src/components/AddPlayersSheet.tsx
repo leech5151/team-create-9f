@@ -90,7 +90,12 @@ export function AddPlayersSheet({ existingNames, onSave, onClose }: Props) {
   return (
     <div className="sheetScrim" onClick={onClose} role="dialog" aria-modal="true" aria-label="선수 등록">
       <div className="sheet" onClick={(e) => e.stopPropagation()}>
-        <div className="sheet__title">선수 등록</div>
+        <div className="sheet__head">
+          <div className="sheet__title">선수 등록</div>
+          <button type="button" className="sheet__x" onClick={onClose} aria-label="닫기">
+            ×
+          </button>
+        </div>
         <div className="sheet__hint">
           핸디는 매 게임 <b>더하고</b>, 패널티는 <b>빼는</b> 값입니다. 숫자만 넣으면 돼요.
         </div>

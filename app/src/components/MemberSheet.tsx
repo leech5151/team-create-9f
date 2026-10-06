@@ -39,7 +39,12 @@ export function MemberSheet({ member, tier, onSave, onDelete, onClose }: Props) 
   return (
     <div className="sheetScrim" onClick={onClose} role="dialog" aria-modal="true" aria-label="멤버 수정">
       <div className="sheet" onClick={(e) => e.stopPropagation()}>
-        <div className="sheet__title">멤버 수정</div>
+        <div className="sheet__head">
+          <div className="sheet__title">멤버 수정</div>
+          <button type="button" className="sheet__x" onClick={onClose} aria-label="닫기">
+            ×
+          </button>
+        </div>
         <div className="sheet__hint">
           {tier === null
             ? '티어는 참석자들의 점수 순위로 자동 계산됩니다.'

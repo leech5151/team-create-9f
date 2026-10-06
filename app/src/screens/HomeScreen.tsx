@@ -17,10 +17,16 @@ const FEATURES: Feature[] = [
     bars: ['#C93A16', '#FF4A21', '#FF9B7F'],
   },
   {
-    section: 'teams',
-    title: '팀짜기',
-    desc: '점수 순위로 티어를 나눠 레인을 균형 있게 배정',
-    bars: ['#1F5FE0', '#0E9D8B', '#E0A200'],
+    section: 'meetup',
+    title: '정모 팀짜기',
+    desc: '날짜별로 저장하고 참석자 모두가 같은 배정을 봅니다',
+    bars: ['#1F5FE0', '#4A82EA', '#9BBAF5'],
+  },
+  {
+    section: 'flash',
+    title: '번개 팀짜기',
+    desc: '저장 없이 지금 한 번 — 이 기기에만 남습니다',
+    bars: ['#0E9D8B', '#39BDAC', '#A8E2DA'],
   },
   {
     title: '점수 관리',
@@ -38,14 +44,19 @@ interface Props {
   memberCount: number;
   attendCount: number;
   game: number;
+  /** Date of the most recently saved 정모, or null when none exists yet. */
+  latestMeetup: string | null;
   onOpen: (section: Exclude<Section, 'home'>) => void;
 }
 
-export function HomeScreen({ memberCount, attendCount, game, onOpen }: Props) {
-  const teamSummary =
+export function HomeScreen({ memberCount, attendCount, game, latestMeetup, onOpen }: Props) {
+  /** 번개는 이 브라우저에 남아 있는 명단이 곧 다음 판의 출발점이다. */
+  const flashSummary =
     memberCount === 0
       ? '멤버를 등록하면 시작할 수 있어요'
       : `멤버 ${memberCount}명 · 참석 ${attendCount}명 · GAME ${game}`;
+  const meetupSummary =
+    latestMeetup === null ? '저장된 정모가 없어요' : `최근 정모 ${latestMeetup}`;
 
   return (
     <div className="screen">
@@ -74,9 +85,8 @@ export function HomeScreen({ memberCount, attendCount, game, onOpen }: Props) {
                   {!ready && <span className="feature__badge">준비 중</span>}
                 </span>
                 <span className="feature__desc">{f.desc}</span>
-                {ready && f.section === 'teams' && (
-                  <span className="feature__meta">{teamSummary}</span>
-                )}
+                {f.section === 'flash' && <span className="feature__meta">{flashSummary}</span>}
+                {f.section === 'meetup' && <span className="feature__meta">{meetupSummary}</span>}
               </span>
               {ready && (
                 <span className="feature__chevron" aria-hidden="true">

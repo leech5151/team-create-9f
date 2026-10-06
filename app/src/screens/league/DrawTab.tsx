@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import type { LeagueSnapshot, Season, Team } from '../../league/api';
 import type { LeaguePlayer } from '../../league/types';
 import { shuffle } from '../../lib/assign';
+import { useDismissible } from '../../hooks/useBackStack';
 import { teamScore } from '../../league/tiers';
 import { TeamAdjust } from '../../components/league/TeamAdjust';
 import { TeamMemberSheet } from '../../components/league/TeamMemberSheet';
@@ -72,6 +73,11 @@ export function DrawTab({
   const [claiming, setClaiming] = useState(false);
   /** Open while picking which teams compete for the drawn player. */
   const [rolling, setRolling] = useState(false);
+  // 뒤로가기로 닫히는 시트들.
+  useDismissible(editing !== null, () => setEditing(null));
+  useDismissible(claiming, () => setClaiming(false));
+  useDismissible(rolling, () => setRolling(false));
+
   /** Name flashing past while the draw spins; null when idle. */
   const [flash, setFlash] = useState<string | null>(null);
   const spinTimers = useRef<{ tick?: number; stop?: number }>({});

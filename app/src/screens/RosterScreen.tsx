@@ -8,6 +8,7 @@ import type { Meetup } from '../meetup/api';
 import { MeetupCalendar } from '../components/MeetupCalendar';
 import { parseDate, weekdayLabel } from '../league/schedule';
 import type { LoadState } from '../league/useLeague';
+import { useDismissible } from '../hooks/useBackStack';
 
 const OPTION_LABELS: [key: keyof Options, label: string][] = [
   ['balance', '에버리지 균형'],
@@ -50,7 +51,6 @@ interface Props {
   meetupState: LoadState;
   meetupBusy: boolean;
   onOpenMeetup: (metOn: string) => void;
-  onCloseMeetup: () => void;
   onSaveMeetup: (metOn: string) => void;
   onDeleteMeetup: (metOn: string) => void;
   /** Today as an ISO date — the default target for a new 정모. */
@@ -87,7 +87,6 @@ export function RosterScreen({
   meetupState,
   meetupBusy,
   onOpenMeetup,
-  onCloseMeetup,
   onSaveMeetup,
   onDeleteMeetup,
   today,
@@ -100,17 +99,19 @@ export function RosterScreen({
   const absent = roster.filter((m) => !attend[m.id]).sort(byScore);
 
   const [calOpen, setCalOpen] = useState(false);
+  // 캘린더도 뒤로가기로 닫힌다 — 시트는 아니지만 덮어 가리는 레이어다.
+  useDismissible(calOpen, () => setCalOpen(false));
   const savedDates = new Set(meetups.map((m) => m.metOn));
   /** In 정모 mode on a date that has never been saved — 저장 will create it. */
   const unsavedMeetup = meetupOn !== null && !savedDates.has(meetupOn);
-  /** Turning the switch on opens the newest saved 정모, or starts today's. */
-  const onOpenLatestMeetup = () => onOpenMeetup(meetups[0]?.metOn ?? today);
 
   if (empty) {
     return (
       <div className="screen">
-        <div className="eyebrow">{todayLabel()} · 정기모임</div>
-        <div className="title">참석 명단</div>
+        <div className="eyebrow">
+          {meetupOn ? `${meetupOn} · 정모` : `${todayLabel()} · 번개`}
+        </div>
+        <div className="title">{meetupOn ? '정모 명단' : '참석 명단'}</div>
 
         <div className="blank">
           <div className="blank__title">아직 멤버가 없어요</div>
@@ -125,20 +126,6 @@ export function RosterScreen({
           <button type="button" className="blank__ghost" onClick={onLoadSample}>
             예시 명단 30명으로 먼저 둘러보기
           </button>
-          {/*
-            빈 명단에서도 저장된 정모는 열 수 있어야 한다 — 처음 들어온 사람이
-            보고 싶은 건 자기 이름이 아니라 운영자가 올려둔 그날의 레인이다.
-          */}
-          {meetups.length > 0 && (
-            <button
-              type="button"
-              className="blank__ghost"
-              onClick={onOpenLatestMeetup}
-              disabled={meetupBusy}
-            >
-              저장된 정모 보기 ({meetups[0]!.metOn})
-            </button>
-          )}
         </div>
       </div>
     );
@@ -187,8 +174,9 @@ export function RosterScreen({
       <div className="screen">
         <div className="rosterHead">
           <div className="rosterHead__left">
+            {/* 정모는 날짜가 곧 정체성이고, 번개는 오늘 한 번이라 날짜만 적는다. */}
             <div className="eyebrow">
-              {meetupOn ? `${meetupOn} · 저장된 정모` : `${todayLabel()} · 정기모임`}
+              {meetupOn ? `${meetupOn} · 정모` : `${todayLabel()} · 번개`}
             </div>
             <div className="rosterHead__titleRow">
               <div className="rosterHead__title">{meetupOn ? '정모 명단' : '참석 명단'}</div>
@@ -199,28 +187,6 @@ export function RosterScreen({
                 aria-pressed={editMode}
               >
                 {editMode ? '완료' : '수정·삭제'}
-              </button>
-              {/*
-                정모 스위치 — 이 브라우저에만 있는 세션 명단과, 저장해서 모두가
-                보는 정모 명단을 오간다. 켜는 즉시 서버에 쓰이는 건 아니고,
-                저장을 눌러야 올라간다.
-              */}
-              <button
-                type="button"
-                className={`meetupToggle${meetupOn ? ' meetupToggle--on' : ''}`}
-                onClick={() => (meetupOn ? onCloseMeetup() : onOpenLatestMeetup())}
-                disabled={meetupBusy || (!meetupOn && meetups.length === 0 && !isAdmin)}
-                aria-pressed={meetupOn !== null}
-                title={
-                  meetupOn
-                    ? '세션 명단으로 돌아가기'
-                    : meetups.length === 0
-                      ? '저장된 정모가 없어요'
-                      : '저장된 정모 명단 보기'
-                }
-              >
-                <span className="meetupToggle__dot" />
-                정모
               </button>
             </div>
           </div>

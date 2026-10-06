@@ -25,10 +25,20 @@ export function ShareSheet({ games, onClose, onShare, onCopy, onCopyImage }: Pro
     >
       <div className="shareCard" onClick={(e) => e.stopPropagation()}>
         <div className="shareCard__head">
-          <div className="shareCard__title">{title}</div>
-          <div className="shareCard__meta">
-            {todayShort()} 정기모임{multi && ` · ${games.length}게임`}
+          <div>
+            <div className="shareCard__title">{title}</div>
+            <div className="shareCard__meta">
+              {todayShort()} 정기모임{multi && ` · ${games.length}게임`}
+            </div>
           </div>
+          <button
+            type="button"
+            className="shareCard__x"
+            onClick={onClose}
+            aria-label="닫기"
+          >
+            ×
+          </button>
         </div>
 
         {games.map(({ game, lanes }) => (

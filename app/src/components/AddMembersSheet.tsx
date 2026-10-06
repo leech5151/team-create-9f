@@ -73,7 +73,12 @@ export function AddMembersSheet({ onSave, onClose }: Props) {
   return (
     <div className="sheetScrim" onClick={onClose} role="dialog" aria-modal="true" aria-label="멤버 추가">
       <div className="sheet" onClick={(e) => e.stopPropagation()}>
-        <div className="sheet__title">멤버 추가</div>
+        <div className="sheet__head">
+          <div className="sheet__title">멤버 추가</div>
+          <button type="button" className="sheet__x" onClick={onClose} aria-label="닫기">
+            ×
+          </button>
+        </div>
         <div className="sheet__hint">
           점수를 적으면 명단 전체와 비교해 1·2·3티어가 자동으로 정해집니다.
         </div>

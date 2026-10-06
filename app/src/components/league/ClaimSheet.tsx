@@ -14,7 +14,12 @@ export function ClaimSheet({ player, teams, busy, onClaim, onClose }: Props) {
   return (
     <div className="sheetScrim" onClick={onClose} role="dialog" aria-modal="true" aria-label="낙찰">
       <div className="sheet" onClick={(e) => e.stopPropagation()}>
-        <div className="sheet__title">{player.name} 낙찰</div>
+        <div className="sheet__head">
+          <div className="sheet__title">{player.name} 낙찰</div>
+          <button type="button" className="sheet__x" onClick={onClose} aria-label="닫기">
+            ×
+          </button>
+        </div>
         <div className="sheet__hint">
           어느 팀이 데려갈지 고르세요.
           {player.avg !== null && ` 점수 ${player.avg}`}

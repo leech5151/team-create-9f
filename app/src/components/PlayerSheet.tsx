@@ -53,8 +53,12 @@ export function PlayerSheet({ player, onSave, onDelete, onClose }: Props) {
   return (
     <div className="sheetScrim" onClick={onClose} role="dialog" aria-modal="true" aria-label="선수 수정">
       <div className="sheet" onClick={(e) => e.stopPropagation()}>
-        <div className="sheet__title">선수 수정</div>
-
+        <div className="sheet__head">
+          <div className="sheet__title">선수 수정</div>
+          <button type="button" className="sheet__x" onClick={onClose} aria-label="닫기">
+            ×
+          </button>
+        </div>
         <div className="field">
           <label className="field__label" htmlFor="player-name">
             이름

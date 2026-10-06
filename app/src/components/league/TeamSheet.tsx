@@ -73,7 +73,12 @@ export function TeamSheet({
       aria-label={editing ? '팀 수정' : '팀 만들기'}
     >
       <div className="sheet" onClick={(e) => e.stopPropagation()}>
-        <div className="sheet__title">{editing ? '팀 수정' : '팀 만들기'}</div>
+        <div className="sheet__head">
+          <div className="sheet__title">{editing ? '팀 수정' : '팀 만들기'}</div>
+          <button type="button" className="sheet__x" onClick={onClose} aria-label="닫기">
+            ×
+          </button>
+        </div>
         <div className="sheet__hint">3인 팀전이라 세 명을 골라야 합니다.</div>
 
         <div className="field">

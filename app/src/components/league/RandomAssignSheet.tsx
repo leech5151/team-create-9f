@@ -87,7 +87,12 @@ export function RandomAssignSheet({ player, teams, busy, onAssign, onClose }: Pr
       aria-label="랜덤 배정"
     >
       <div className="sheet" onClick={(e) => e.stopPropagation()}>
-        <div className="sheet__title">{player.name} 랜덤 배정</div>
+        <div className="sheet__head">
+          <div className="sheet__title">{player.name} 랜덤 배정</div>
+          <button type="button" className="sheet__x" onClick={onClose} aria-label="닫기">
+            ×
+          </button>
+        </div>
         <div className="sheet__hint">
           경쟁하는 팀만 남기고 돌리세요. 선택한 팀 중에서 무작위로 정해집니다.
         </div>

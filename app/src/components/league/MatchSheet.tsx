@@ -114,7 +114,12 @@ export function MatchSheet({
   return (
     <div className="sheetScrim" onClick={onClose} role="dialog" aria-modal="true" aria-label={editing ? '대진 수정' : '대진 추가'}>
       <div className="sheet" onClick={(e) => e.stopPropagation()}>
-        <div className="sheet__title">{weekNo}주차 대진 {editing ? '수정' : '추가'}</div>
+        <div className="sheet__head">
+          <div className="sheet__title">{weekNo}주차 대진 {editing ? '수정' : '추가'}</div>
+          <button type="button" className="sheet__x" onClick={onClose} aria-label="닫기">
+            ×
+          </button>
+        </div>
         <div className="sheet__hint">맞붙는 두 팀과 날짜를 고르세요. 시간과 레인은 비워둘 수 있어요.</div>
 
         <div className="matchPick">

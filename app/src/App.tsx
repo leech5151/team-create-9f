@@ -8,6 +8,7 @@ import { RollOverlay } from './components/RollOverlay';
 import { ShareSheet } from './components/ShareSheet';
 import { useInstallPrompt } from './hooks/useInstallPrompt';
 import { useVisualViewport } from './hooks/useVisualViewport';
+import { useBackGuard, useDismissible } from './hooks/useBackStack';
 import { useAdminAuth } from './league/useAdminAuth';
 import { useMeetups } from './meetup/useMeetups';
 import { deleteMeetup, saveMeetup } from './meetup/api';
@@ -49,8 +50,9 @@ import { LEAGUE_TABS } from './types';
 const APP_TITLE = '9FRAME';
 
 const SECTION_TITLES: Record<Exclude<Section, 'home'>, string> = {
-  teams: '팀짜기',
   league: '상주리그',
+  meetup: '정모 팀짜기',
+  flash: '번개 팀짜기',
 };
 
 const TOAST_MS = 1800;
@@ -346,16 +348,59 @@ export default function App() {
   // ── Section navigation ─────────────────────────────────────
   const openSection = (section: Exclude<Section, 'home'>) => {
     if (section === 'league') setLeagueTabState('main');
+    /*
+     * 정모와 번개는 같은 화면을 쓰고 모드만 다르다 — 들어가는 순간 모드를
+     * 맞춰 둬야, 명단 화면이 어느 쪽 데이터를 들고 있는지 헷갈리지 않는다.
+     */
+    if (section === 'meetup') {
+      openMeetup(meetups.snapshot.meetups[0]?.metOn ?? formatDate(todayUtc()));
+      setState((s) => ({ ...s, section }));
+      return;
+    }
+    // 저장된 정모를 들고 번개로 넘어가지 않도록 세션 명단으로 되돌린다.
+    if (!closeMeetup()) return;
     setState((s) => ({ ...s, section }));
   };
 
   /** Back out to the hub. Any draw in progress is kept, not discarded. */
   const goHome = () => {
+    // 정모를 들고 허브로 나가면 그 사이 변경이 어디에도 저장되지 않는다.
+    if (!closeMeetup()) return;
     roll.reset();
     setState((s) => ({ ...s, section: 'home' }));
   };
 
   const goLeagueTab = (leagueTab: LeagueTab) => setLeagueTabState(leagueTab);
+
+  /**
+   * One level up, for the back button: tab/screen first, then out to the hub.
+   *
+   * Returns false only at the hub with nothing open — that is the one place a
+   * back press should be allowed to leave the app.
+   */
+  const goUp = (): boolean => {
+    if (state.section === 'home') return false;
+    if (state.section === 'league' && leagueTabState !== 'main') {
+      setLeagueTabState('main');
+      return true;
+    }
+    if (teams && state.screen !== 'roster') {
+      setState((s) => ({ ...s, screen: 'roster' }));
+      return true;
+    }
+    // 저장 안 한 정모에서 확인을 취소하면 제자리 — 그래도 back 은 소비한 셈이다.
+    goHome();
+    return true;
+  };
+
+  useBackGuard(goUp, () => flash('한 번 더 누르면 나갑니다'));
+
+  // 뒤로가기로 닫히는 레이어들. 가장 나중에 열린 것부터 닫힌다.
+  useDismissible(sharing !== null, () => setSharing(null));
+  useDismissible(adding, () => setAdding(false));
+  useDismissible(editing !== null, () => setEditing(null));
+  useDismissible(loginOpen, () => setLoginOpen(false));
+  useDismissible(installGuide, () => setInstallGuide(false));
 
   const goTab = (key: 'roster' | 'draw' | 'history') => {
     const target: Screen = key === 'draw' && lanes.length === 0 ? 'roster' : key;
@@ -443,16 +488,17 @@ export default function App() {
    * left alone — but not its `section`/`screen`, or leaving a 정모 would bounce
    * the user out of 팀짜기 to wherever they last were.
    */
-  const closeMeetup = () => {
-    const unsaved = meetupOn !== null && !meetups.snapshot.meetups.some((m) => m.metOn === meetupOn);
+  const closeMeetup = (): boolean => {
+    if (meetupOn === null) return true;
+    const unsaved = !meetups.snapshot.meetups.some((m) => m.metOn === meetupOn);
     if (unsaved && !window.confirm('저장하지 않은 정모입니다. 나가면 이 배정은 사라집니다.\n계속할까요?')) {
-      return;
+      return false;
     }
     roll.reset();
     setEditMode(false);
     setMeetupOn(null);
     setState((s) => ({ ...loadState(), section: s.section, screen: s.screen }));
-    flash('세션 명단으로 돌아왔어요');
+    return true;
   };
 
   /** Writes the roster, attendance and drawn lanes to the 정모 for `metOn`. */
@@ -619,7 +665,8 @@ export default function App() {
     startAssignment(true);
   };
 
-  const teams = state.section === 'teams';
+  /** 정모·번개 모두 같은 명단/배정/기록 화면을 쓴다. */
+  const teams = state.section === 'meetup' || state.section === 'flash';
   const league = state.section === 'league';
 
   const visibleLeagueTabs = useMemo(
@@ -707,6 +754,7 @@ export default function App() {
             memberCount={state.roster.length}
             attendCount={attending.length}
             game={state.game}
+            latestMeetup={meetups.snapshot.meetups[0]?.metOn ?? null}
             onOpen={openSection}
           />
         )}
@@ -742,7 +790,6 @@ export default function App() {
             meetupState={meetups.state}
             meetupBusy={meetupBusy}
             onOpenMeetup={openMeetup}
-            onCloseMeetup={closeMeetup}
             onSaveMeetup={(metOn) => void storeMeetup(metOn)}
             onDeleteMeetup={(metOn) => void removeMeetup(metOn)}
             today={formatDate(todayUtc())}

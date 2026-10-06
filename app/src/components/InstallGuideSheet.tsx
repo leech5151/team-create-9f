@@ -36,8 +36,12 @@ export function InstallGuideSheet({ isIos, inAppBrowser, onClose }: Props) {
       aria-label="앱 설치 방법"
     >
       <div className="sheet" onClick={(e) => e.stopPropagation()}>
-        <div className="sheet__title">홈 화면에 앱으로 추가</div>
-
+        <div className="sheet__head">
+          <div className="sheet__title">홈 화면에 앱으로 추가</div>
+          <button type="button" className="sheet__x" onClick={onClose} aria-label="닫기">
+            ×
+          </button>
+        </div>
         {inAppBrowser ? (
           /*
            * 인앱 브라우저에는 '홈 화면에 추가' 자체가 없다. 페이지에서 할 수

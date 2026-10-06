@@ -515,48 +515,6 @@ input {
   color: #fff;
 }
 
-/*
- * 정모 스위치 — 이 브라우저에만 있는 세션 명단 ↔ 저장해서 공유되는 정모 명단.
- * 켜져 있으면 지금 보고 있는 명단이 남들에게도 보이는 것이므로, 점을 켜서
- * 상태가 한눈에 보이게 한다.
- */
-.meetupToggle {
-  flex: none;
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  padding: 4px 10px;
-  border-radius: 999px;
-  border: 1px solid rgba(0, 0, 0, 0.12);
-  background: #fff;
-  font-size: 11px;
-  font-weight: 800;
-  color: #6b6f76;
-}
-
-.meetupToggle__dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: #c2c6cc;
-  flex: none;
-}
-
-.meetupToggle--on {
-  background: #fff1ec;
-  border-color: #ff4a21;
-  color: #c93a16;
-}
-
-.meetupToggle--on .meetupToggle__dot {
-  background: #ff4a21;
-}
-
-.meetupToggle:disabled {
-  opacity: 0.4;
-  cursor: default;
-}
-
 /* ── 정모 막대: 저장된 날짜들과 저장·삭제 ──────────────────── */
 
 .meetupBar {
@@ -579,9 +537,11 @@ input {
   font-weight: 800;
 }
 
+/* 저장·삭제 같은 크기로 오른쪽에 모은다. */
 .meetupBar__actions {
   display: flex;
   align-items: center;
+  justify-content: flex-end;
   gap: 6px;
   margin-top: 9px;
 }
@@ -739,13 +699,18 @@ input {
   background: #14161a;
 }
 
+/*
+ * 삭제와 같은 치수 — 저장만 flex: 1 로 늘어나 있어서 좁은 폭에서 줄이
+ * 넘어갔다. 날짜 막대는 보조 영역이라 버튼이 폭을 다 먹을 이유가 없다.
+ */
 .meetupBar__save {
-  flex: 1;
+  flex: none;
   height: 36px;
+  padding: 0 12px;
   border-radius: 11px;
   background: #ff4a21;
   color: #fff;
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 800;
 }
 
@@ -4224,10 +4189,32 @@ input {
 }
 
 .shareCard__head {
+  position: sticky;
+  top: 0;
+  z-index: 1;
   display: flex;
-  align-items: baseline;
+  align-items: flex-start;
   justify-content: space-between;
   gap: 8px;
+  margin: -20px -20px 0;
+  padding: 20px 20px 10px;
+  background: #14161a;
+}
+
+.shareCard__x {
+  flex: none;
+  width: 32px;
+  height: 32px;
+  margin: -4px -4px 0 0;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .shareCard__title {
@@ -4355,10 +4342,51 @@ input {
   padding-bottom: 0;
 }
 
+/*
+ * 제목 줄과 닫기 버튼. iOS 에는 뒤로가기 버튼이 없고 가장자리 스와이프도
+ * 설치 상태에서는 동작하지 않아서, 눌러서 닫을 자리가 눈에 보여야 한다.
+ *
+ * 시트가 길면 제목까지 스크롤되어 올라가므로 위쪽에 붙박아 둔다 — 아래 저장
+ * 바와 짝이 맞는다.
+ */
+.sheet__head {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  /* 좌우 음수 마진으로 시트 폭을 꽉 채워, 지나가는 내용이 옆으로 비치지 않게. */
+  margin: -20px -20px 0;
+  padding: 20px 20px 10px;
+  background: #f4f3f0;
+}
+
 .sheet__title {
   font-size: 20px;
   font-weight: 800;
   letter-spacing: -0.02em;
+}
+
+.sheet__x {
+  flex: none;
+  width: 32px;
+  height: 32px;
+  margin: -4px -4px 0 0;
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.05);
+  color: #6b6f76;
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.sheet__x:active {
+  background: rgba(0, 0, 0, 0.1);
 }
 
 .sheet__hint {
@@ -4756,6 +4784,15 @@ input {
 :root[data-keyboard='up'] .sheet__save,
 :root[data-keyboard='up'] .sheet__ghost {
   height: 44px;
+}
+
+/* 13 mini 처럼 짧은 화면에서는 머리 줄도 줄여 입력칸 자리를 벌어준다. */
+:root[data-keyboard='up'] .sheet__head {
+  padding-bottom: 6px;
+}
+
+:root[data-keyboard='up'] .sheet__title {
+  font-size: 16px;
 }
 
 .sheet__save {

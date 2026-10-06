@@ -54,8 +54,13 @@ export interface HistoryEntry {
  * Top-level area of the app. `home` is the hub; each other value is a feature
  * with its own internal navigation. Add a member here when a feature becomes
  * routable — the hub lists planned ones separately.
+ *
+ * `meetup` and `flash` are the same draw on different footing: 정모 is saved to
+ * the server and shared, 번개 lives only in this browser. Splitting them at the
+ * hub replaces the switch that used to sit on the roster screen — which mode
+ * you are in is now a place you went to, not a toggle you might not notice.
  */
-export type Section = 'home' | 'teams' | 'league';
+export type Section = 'home' | 'league' | 'meetup' | 'flash';
 
 /** Screens *within* the 팀짜기 feature. */
 export type Screen = 'roster' | 'draw' | 'result' | 'history';

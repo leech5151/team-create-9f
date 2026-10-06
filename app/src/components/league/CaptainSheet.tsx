@@ -31,7 +31,12 @@ export function CaptainSheet({
       aria-label={`${teamName} 팀장 지정`}
     >
       <div className="sheet" onClick={(e) => e.stopPropagation()}>
-        <div className="sheet__title">{teamName} 팀장</div>
+        <div className="sheet__head">
+          <div className="sheet__title">{teamName} 팀장</div>
+          <button type="button" className="sheet__x" onClick={onClose} aria-label="닫기">
+            ×
+          </button>
+        </div>
         <div className="sheet__hint">한 선수는 한 팀의 팀장만 맡을 수 있어요.</div>
 
         <div className="card captainPickList">

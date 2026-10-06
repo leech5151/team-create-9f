@@ -24,7 +24,12 @@ export function LoginSheet({ onSignIn, onClose }: Props) {
   return (
     <div className="sheetScrim" onClick={onClose} role="dialog" aria-modal="true" aria-label="운영자 로그인">
       <div className="sheet" onClick={(e) => e.stopPropagation()}>
-        <div className="sheet__title">운영자 로그인</div>
+        <div className="sheet__head">
+          <div className="sheet__title">운영자 로그인</div>
+          <button type="button" className="sheet__x" onClick={onClose} aria-label="닫기">
+            ×
+          </button>
+        </div>
         <div className="sheet__hint">
           기록을 보는 데는 로그인이 필요 없습니다. 등록·수정할 때만 필요합니다.
         </div>

@@ -28,6 +28,7 @@ import {
   type PlayerDraft,
 } from '../league/api';
 import { useLeague } from '../league/useLeague';
+import { useDismissible } from '../hooks/useBackStack';
 import { orderRoster } from '../league/tiers';
 import { currentWeekNo, weekDays } from '../league/schedule';
 import { AddPlayersSheet } from '../components/AddPlayersSheet';
@@ -65,6 +66,17 @@ export function LeagueScreen({ tab, onGoTab, isAdmin, onNotify }: Props) {
   /** 경기일정에서 조회만 하려고 연 경기. 기록용과 달리 저장 경로가 없다. */
   const [viewingMatch, setViewingMatch] = useState<Match | null>(null);
   const [lineupMatch, setLineupMatch] = useState<Match | null>(null);
+
+  // 뒤로가기로 닫히는 시트들 — 열려 있는 동안만 등록된다.
+  useDismissible(addOpen, () => setAddOpen(false));
+  useDismissible(editing !== null, () => setEditing(null));
+  useDismissible(seasonSheet, () => setSeasonSheet(false));
+  useDismissible(editingSeason !== null, () => setEditingSeason(null));
+  useDismissible(matchSheet, () => setMatchSheet(false));
+  useDismissible(editingMatch !== null, () => setEditingMatch(null));
+  useDismissible(recordingMatch !== null, () => setRecordingMatch(null));
+  useDismissible(viewingMatch !== null, () => setViewingMatch(null));
+  useDismissible(lineupMatch !== null, () => setLineupMatch(null));
 
   // Which 회차/주차 is on screen. Held in memory rather than persisted so a
   // newly created season becomes the selection without extra clicks.

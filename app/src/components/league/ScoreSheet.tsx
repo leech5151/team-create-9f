@@ -369,7 +369,12 @@ export function ScoreSheet({ match, home, away, existing, readOnly = false, onSa
   return (
     <div className="sheetScrim" onClick={onClose} role="dialog" aria-modal="true" aria-label="경기 기록">
       <div className="sheet" onClick={(e) => e.stopPropagation()}>
-        <div className="sheet__title">{readOnly ? '경기 상세' : '경기 기록'}</div>
+        <div className="sheet__head">
+          <div className="sheet__title">{readOnly ? '경기 상세' : '경기 기록'}</div>
+          <button type="button" className="sheet__x" onClick={onClose} aria-label="닫기">
+            ×
+          </button>
+        </div>
         <div className="sheet__hint">
           {match.playedOn ? shortDate(parseDate(match.playedOn)!) : '날짜 미정'}
           {match.startTime ? ` ${match.startTime}` : ''} ·{' '}

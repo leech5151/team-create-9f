@@ -72,7 +72,12 @@ export function TeamMemberSheet({
       aria-label={`${team.name} 구성`}
     >
       <div className="sheet" onClick={(e) => e.stopPropagation()}>
-        <div className="sheet__title">{team.name}</div>
+        <div className="sheet__head">
+          <div className="sheet__title">{team.name}</div>
+          <button type="button" className="sheet__x" onClick={onClose} aria-label="닫기">
+            ×
+          </button>
+        </div>
         <div className="sheet__hint">
           바꾸는 즉시 저장됩니다. 팀장은 팀마다 한 명이에요.
         </div>

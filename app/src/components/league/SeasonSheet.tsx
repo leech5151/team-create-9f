@@ -93,7 +93,12 @@ export function SeasonSheet({
   return (
     <div className="sheetScrim" onClick={onClose} role="dialog" aria-modal="true" aria-label={editing ? '회차 수정' : '회차 만들기'}>
       <div className="sheet" onClick={(e) => e.stopPropagation()}>
-        <div className="sheet__title">{editing ? `${season!.edition}회 수정` : '회차 만들기'}</div>
+        <div className="sheet__head">
+          <div className="sheet__title">{editing ? `${season!.edition}회 수정` : '회차 만들기'}</div>
+          <button type="button" className="sheet__x" onClick={onClose} aria-label="닫기">
+            ×
+          </button>
+        </div>
         <div className="sheet__hint">
           시작 날짜부터 7일씩 끊어 주차가 매겨집니다. 주차는 입력한 수만큼 자동 생성돼요.
         </div>

@@ -144,7 +144,13 @@ export function loadState(): PersistedState {
     opts,
     history,
     game: typeof s.game === 'number' && s.game >= 1 ? Math.floor(s.game) : 1,
-    section: s.section === 'teams' || s.section === 'league' ? s.section : 'home',
+    // 'teams' 는 정모/번개로 갈리기 전의 값 — 저장되지 않는 번개 쪽으로 보낸다.
+    section:
+      s.section === 'league' || s.section === 'meetup' || s.section === 'flash'
+        ? s.section
+        : s.section === 'teams'
+          ? 'flash'
+          : 'home',
     laneCount:
       typeof s.laneCount === 'number' && s.laneCount >= 1 ? Math.floor(s.laneCount) : null,
     // Absent in states saved before start lanes existed — those all began at 1.
