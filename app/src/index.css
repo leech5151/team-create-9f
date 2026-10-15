@@ -4956,3 +4956,760 @@ input {
     transition-duration: 0.01ms !important;
   }
 }
+
+/* ── 교류전: 선수명단 ─────────────────────────────────────────── */
+
+/* 1:1 이라 두 칸이 반씩 — 팀 이름과 인원을 함께 보여준다. */
+.exchangeSides {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.exchangeSide {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  min-width: 0;
+  padding: 12px 14px;
+  border-radius: 14px;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  background: #fff;
+  text-align: left;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.exchangeSide--on {
+  background: #14161a;
+  border-color: #14161a;
+  color: #fff;
+}
+
+.exchangeSide__name {
+  max-width: 100%;
+  font-size: 14px;
+  font-weight: 800;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.exchangeSide__count {
+  font-size: 11px;
+  font-weight: 700;
+  color: #8a8f98;
+}
+
+.exchangeSide--on .exchangeSide__count {
+  color: rgba(255, 255, 255, 0.65);
+}
+
+.exchangeRoster {
+  margin-top: 14px;
+}
+
+/* 이름 · 성별 · 점수 — 상주리그 선수명단 행과 같은 방식, 경기 칸만 없다. */
+.memberRow__main--exchange {
+  display: grid;
+  grid-template-columns: minmax(0, 1.6fr) minmax(0, 0.6fr) minmax(0, 1.4fr);
+  column-gap: 6px;
+  text-align: center;
+}
+
+.memberRow__main--exchange.memberRow__main--editable {
+  grid-template-columns: minmax(0, 1.6fr) minmax(0, 0.6fr) minmax(0, 1.4fr) 26px;
+}
+
+.memberRow__main--exchange .scoreCell {
+  grid-template-columns: 30px minmax(0, 1fr);
+  gap: 3px;
+  justify-self: center;
+}
+
+.exchangeClear {
+  margin-top: 14px;
+}
+
+/* ── 교류전: 경기설정 ─────────────────────────────────────────── */
+
+.exPlan__save {
+  background: #14161a;
+  border-color: #14161a;
+  color: #fff;
+}
+
+.exLegend {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 6px;
+  margin-top: 12px;
+  font-size: 11.5px;
+  font-weight: 800;
+  color: #4a4f57;
+}
+
+.exLegend .exDot:not(:first-child) {
+  margin-left: 8px;
+}
+
+.exLegend__hint {
+  margin-left: auto;
+  font-size: 10.5px;
+  font-weight: 700;
+  color: #a8adb4;
+}
+
+/* 클럽 표시 — 우리 팀은 브랜드 주황, 상대 팀은 정모 파랑. */
+.exDot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex: none;
+}
+
+.exDot--home {
+  background: #ff4a21;
+}
+
+.exDot--away {
+  background: #1f5fe0;
+}
+
+.exGame {
+  margin-top: 14px;
+  padding: 14px;
+  border-radius: 16px;
+  background: #fff;
+  border: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+.exGame__head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.exGame__no {
+  font-size: 16px;
+  font-weight: 900;
+  letter-spacing: -0.01em;
+}
+
+.exGame__method {
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: #f1f0ec;
+  font-size: 10.5px;
+  font-weight: 800;
+  color: #4a4f57;
+}
+
+.exGame__del {
+  margin-left: auto;
+  font-size: 11px;
+  font-weight: 800;
+  color: #c93a16;
+}
+
+.exGame__chips {
+  margin-top: 10px;
+}
+
+.exGame__desc {
+  margin-top: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #8a8f98;
+  line-height: 1.45;
+}
+
+.exGame__draw {
+  width: 100%;
+  margin-top: 10px;
+  height: 42px;
+  border-radius: 12px;
+  background: #14161a;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.exGame__draw:disabled {
+  opacity: 0.5;
+}
+
+.exTables {
+  display: grid;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+@media (min-width: 700px) {
+  .exTables {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.exTable {
+  border-radius: 12px;
+  background: #f7f6f3;
+  padding: 10px;
+  min-width: 0;
+}
+
+.exTable__head {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  font-size: 11px;
+  font-weight: 700;
+  color: #8a8f98;
+}
+
+.exTable__no {
+  font-size: 13px;
+  font-weight: 900;
+  color: #14161a;
+}
+
+.exTable__label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: #4a4f57;
+  font-weight: 800;
+}
+
+.exTable__avg {
+  margin-left: auto;
+  flex: none;
+  font-variant-numeric: tabular-nums;
+}
+
+.exTable__lanesRow {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.exLane {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.exLane__no {
+  font-size: 10px;
+  font-weight: 800;
+  color: #a8adb4;
+}
+
+.exPlayer {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+  padding: 7px 8px;
+  border-radius: 9px;
+  background: #fff;
+  border: 1.5px solid transparent;
+  text-align: left;
+  transition: border-color 0.15s ease;
+}
+
+.exPlayer--on {
+  border-color: #ff4a21;
+  background: #fff1ec;
+}
+
+.exPlayer__name {
+  flex: 1;
+  min-width: 0;
+  font-size: 12.5px;
+  font-weight: 800;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.exPlayer__tier {
+  flex: none;
+  font-size: 9.5px;
+  font-weight: 800;
+  color: #a8adb4;
+}
+
+.exPlayer__tier::before {
+  content: 'T';
+}
+
+.exPlayer__avg {
+  flex: none;
+  font-size: 11px;
+  font-weight: 800;
+  color: #4a4f57;
+  font-variant-numeric: tabular-nums;
+}
+
+.exPlayer__avg em {
+  font-style: normal;
+  color: #0e9d8b;
+  margin-left: 1px;
+}
+
+.exAddGame {
+  width: 100%;
+  margin-top: 14px;
+}
+
+/* ── 교류전: 경기진행 ─────────────────────────────────────────── */
+
+/* 클럽 합계 — 두 칸, 앞서는 쪽이 진하게. */
+.exBoard {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.exBoard__side {
+  min-width: 0;
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: #fff;
+  border: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+.exBoard__side--lead.exBoard__side--home {
+  border-color: #ff4a21;
+  box-shadow: inset 0 0 0 1px #ff4a21;
+}
+
+.exBoard__side--lead.exBoard__side--away {
+  border-color: #1f5fe0;
+  box-shadow: inset 0 0 0 1px #1f5fe0;
+}
+
+.exBoard__name {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 800;
+  color: #4a4f57;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.exBoard__total {
+  margin-top: 4px;
+  font-size: 28px;
+  font-weight: 900;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+}
+
+.exBoard__meta {
+  font-size: 10.5px;
+  font-weight: 700;
+  color: #a8adb4;
+}
+
+.exResults {
+  display: grid;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+@media (min-width: 1000px) {
+  .exResults {
+    grid-template-columns: 1fr 1fr;
+    align-items: start;
+  }
+}
+
+.exResult {
+  background: #fff;
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  border-radius: 16px;
+  overflow: hidden;
+  animation: riseIn 0.3s ease both;
+}
+
+.exResult__head {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 12px 14px 8px;
+}
+
+.exResult__no {
+  font-size: 16px;
+  font-weight: 900;
+}
+
+.exResult__label {
+  min-width: 0;
+  font-size: 12px;
+  font-weight: 800;
+  color: #6b6f76;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.exResult__sum {
+  margin-left: auto;
+  flex: none;
+  font-size: 18px;
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
+}
+
+.exResult__sum em {
+  font-style: normal;
+  font-size: 10px;
+  font-weight: 800;
+  color: #a8adb4;
+  margin-right: 5px;
+}
+
+.exResult__lane {
+  display: flex;
+  align-items: stretch;
+  gap: 8px;
+  padding: 8px 14px;
+  border-top: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+.exResult__laneNo {
+  flex: none;
+  width: 36px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  border-radius: 10px;
+  background: #14161a;
+  color: #fff;
+}
+
+.exResult__laneNo strong {
+  font-size: 17px;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.exResult__laneNo span {
+  margin-top: 2px;
+  font-size: 7.5px;
+  font-weight: 800;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.exResult__tiles {
+  flex: 1;
+  min-width: 0;
+  display: grid;
+  gap: 6px;
+}
+
+.exTile {
+  min-width: 0;
+  padding: 7px 8px;
+  border-radius: 10px;
+  background: #f7f6f3;
+}
+
+.exTile__top {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.exTile__tier {
+  font-size: 9px;
+  font-weight: 800;
+  color: #a8adb4;
+}
+
+.exTile__name {
+  margin-top: 3px;
+  font-size: 12.5px;
+  font-weight: 800;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.exTile__score {
+  margin-top: 2px;
+  font-size: 18px;
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
+}
+
+.exTile__score--none {
+  color: #c2c6cc;
+}
+
+.exTile__score em {
+  font-style: normal;
+  font-size: 10px;
+  font-weight: 800;
+  color: #0e9d8b;
+  margin-left: 2px;
+}
+
+.exTile__avg {
+  font-size: 9.5px;
+  font-weight: 700;
+  color: #a8adb4;
+  font-variant-numeric: tabular-nums;
+}
+
+.exResult__enter {
+  width: 100%;
+  padding: 11px;
+  border-top: 1px solid rgba(0, 0, 0, 0.05);
+  font-size: 12.5px;
+  font-weight: 800;
+  color: #ff4a21;
+}
+
+/* 점수 입력 시트 */
+.exScoreRows {
+  margin-top: 10px;
+}
+
+.exScoreRows__lane {
+  margin: 10px 0 4px;
+  font-size: 10.5px;
+  font-weight: 800;
+  color: #a8adb4;
+}
+
+.exScoreRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 0;
+}
+
+.exScoreRow__name {
+  flex: 1;
+  min-width: 0;
+  font-size: 14px;
+  font-weight: 800;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.exScoreRow__avg {
+  flex: none;
+  font-size: 11px;
+  font-weight: 700;
+  color: #8a8f98;
+  font-variant-numeric: tabular-nums;
+}
+
+.exScoreRow__avg em {
+  font-style: normal;
+  color: #0e9d8b;
+  margin-left: 2px;
+}
+
+.exScoreRow__input {
+  flex: none;
+  width: 76px;
+  height: 42px;
+  border-radius: 12px;
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  background: #fff;
+  text-align: center;
+  font-size: 17px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.exScoreRow__input:focus {
+  outline: none;
+  border-color: #ff4a21;
+}
+
+.exScoreSum {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(0, 0, 0, 0.08);
+  font-size: 11.5px;
+  font-weight: 700;
+  color: #8a8f98;
+}
+
+.exScoreSum strong {
+  font-size: 20px;
+  font-weight: 900;
+  color: #14161a;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── 교류전: 메인 ─────────────────────────────────────────────── */
+
+.exVs {
+  margin-top: 4px;
+  font-size: 24px;
+  font-weight: 900;
+  letter-spacing: -0.02em;
+  overflow-wrap: anywhere;
+}
+
+.exVs em {
+  font-style: normal;
+  font-size: 14px;
+  font-weight: 800;
+  color: #a8adb4;
+  margin: 0 4px;
+}
+
+.exSection {
+  margin: 20px 0 8px;
+  font-size: 12px;
+  font-weight: 800;
+  color: #8a8f98;
+}
+
+.exGameRow {
+  display: grid;
+  grid-template-columns: minmax(0, 1.3fr) 48px 10px 48px minmax(0, 1.2fr);
+  align-items: center;
+  gap: 4px;
+  width: 100%;
+  padding: 12px 14px;
+  border-top: 1px solid rgba(0, 0, 0, 0.05);
+  text-align: left;
+}
+
+.exGameRow:first-child {
+  border-top: none;
+}
+
+.exGameRow__no {
+  font-size: 13px;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+.exGameRow__no em {
+  display: block;
+  font-style: normal;
+  font-size: 10px;
+  font-weight: 700;
+  color: #a8adb4;
+  margin-top: 2px;
+}
+
+.exGameRow__score {
+  text-align: center;
+  font-size: 16px;
+  font-weight: 800;
+  color: #8a8f98;
+  font-variant-numeric: tabular-nums;
+}
+
+.exGameRow__score--win {
+  color: #14161a;
+  font-weight: 900;
+}
+
+.exGameRow__colon {
+  text-align: center;
+  font-weight: 800;
+  color: #c2c6cc;
+}
+
+.exGameRow__state {
+  text-align: right;
+  font-size: 11px;
+  font-weight: 800;
+  color: #6b6f76;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.exRank {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  border-top: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+.exRank:first-child {
+  border-top: none;
+}
+
+.exRank__no {
+  flex: none;
+  width: 20px;
+  font-size: 13px;
+  font-weight: 900;
+  color: #a8adb4;
+  text-align: center;
+}
+
+.exRank__no--top {
+  color: #ff4a21;
+}
+
+.exRank__name {
+  flex: 1;
+  min-width: 0;
+  font-size: 14px;
+  font-weight: 800;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.exRank__meta {
+  flex: none;
+  font-size: 10.5px;
+  font-weight: 700;
+  color: #a8adb4;
+}
+
+.exRank__avg {
+  flex: none;
+  width: 40px;
+  text-align: right;
+  font-size: 16px;
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
+}
+
+/* 경기진행 타일 — 점수가 없어도 핸디가 보이게 AVG 줄에 붙인다. */
+.exTile__avg em {
+  font-style: normal;
+  color: #0e9d8b;
+  margin-left: 4px;
+}
+
+/* 팀vs팀 팀 이름은 클럽명이 붙어 길다 — 합계 칸을 밀지 않게 줄인다. */
+.exResult__no,
+.exTable__no {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

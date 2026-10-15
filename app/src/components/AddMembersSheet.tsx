@@ -23,6 +23,8 @@ const blankRow = (): Row => ({ key: nextKey++, name: '', gender: '남', avg: '' 
 const isBlank = (r: Row) => r.name.trim() === '' && r.avg.trim() === '';
 
 interface Props {
+  title?: string;
+  hint?: string;
   onSave: (drafts: MemberDraft[]) => void;
   onClose: () => void;
 }
@@ -31,7 +33,12 @@ interface Props {
  * Bulk entry: one member per line, "줄 추가" for more. Tier is not asked for —
  * it is derived from the scores once everyone is in.
  */
-export function AddMembersSheet({ onSave, onClose }: Props) {
+export function AddMembersSheet({
+  title = '멤버 추가',
+  hint = '점수를 적으면 명단 전체와 비교해 1·2·3티어가 자동으로 정해집니다.',
+  onSave,
+  onClose,
+}: Props) {
   const [rows, setRows] = useState<Row[]>(() =>
     Array.from({ length: INITIAL_ROWS }, () => blankRow()),
   );
@@ -71,17 +78,15 @@ export function AddMembersSheet({ onSave, onClose }: Props) {
   const readyCount = rows.filter((r) => !isBlank(r)).length;
 
   return (
-    <div className="sheetScrim" onClick={onClose} role="dialog" aria-modal="true" aria-label="멤버 추가">
+    <div className="sheetScrim" onClick={onClose} role="dialog" aria-modal="true" aria-label={title}>
       <div className="sheet" onClick={(e) => e.stopPropagation()}>
         <div className="sheet__head">
-          <div className="sheet__title">멤버 추가</div>
+          <div className="sheet__title">{title}</div>
           <button type="button" className="sheet__x" onClick={onClose} aria-label="닫기">
             ×
           </button>
         </div>
-        <div className="sheet__hint">
-          점수를 적으면 명단 전체와 비교해 1·2·3티어가 자동으로 정해집니다.
-        </div>
+        <div className="sheet__hint">{hint}</div>
 
         <div className="bulkHead">
           <span className="bulkHead__name">이름</span>

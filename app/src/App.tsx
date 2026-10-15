@@ -15,6 +15,7 @@ import { deleteMeetup, saveMeetup } from './meetup/api';
 import { formatDate, todayUtc } from './league/schedule';
 import { LoginSheet } from './components/LoginSheet';
 import { useRoll } from './hooks/useRoll';
+import { exchangeHash, parseRoute, writeHash } from './lib/route';
 import {
   buildLanes,
   buildQueue,
@@ -30,11 +31,13 @@ import { clearState, initialState, loadState, saveState, type PersistedState } f
 import { HistoryScreen } from './screens/HistoryScreen';
 import { HomeScreen } from './screens/HomeScreen';
 import { LeagueScreen } from './screens/LeagueScreen';
+import { ExchangeScreen } from './screens/ExchangeScreen';
 import { TabBar } from './components/TabBar';
 import { DrawScreen } from './screens/DrawScreen';
 import { ResultScreen } from './screens/ResultScreen';
 import { RosterScreen } from './screens/RosterScreen';
 import type {
+  ExchangeTab,
   Lane,
   LeagueTab,
   Member,
@@ -45,7 +48,7 @@ import type {
   Section,
   Tier,
 } from './types';
-import { LEAGUE_TABS } from './types';
+import { EXCHANGE_TABS, LEAGUE_TABS } from './types';
 
 const APP_TITLE = '9FRAME';
 
@@ -53,6 +56,7 @@ const SECTION_TITLES: Record<Exclude<Section, 'home'>, string> = {
   league: '상주리그',
   meetup: '정모 팀짜기',
   flash: '번개 팀짜기',
+  exchange: '교류전',
 };
 
 const TOAST_MS = 1800;
@@ -77,7 +81,11 @@ function newMemberId(): string {
 }
 
 export default function App() {
-  const [state, setState] = useState<PersistedState>(loadState);
+  /** Read once: a 교류전 link or reload opens straight on its tab. */
+  const [initialRoute] = useState(() => parseRoute(location.hash));
+  const [state, setState] = useState<PersistedState>(() =>
+    initialRoute ? { ...loadState(), section: initialRoute.section } : loadState(),
+  );
   /**
    * What the share popup is showing: the game just drawn, or the games picked
    * on 기록. Null when it is closed.
@@ -99,6 +107,10 @@ export default function App() {
   const [installGuide, setInstallGuide] = useState(false);
   // Not persisted: entering 상주리그 always lands on 메인.
   const [leagueTabState, setLeagueTabState] = useState<LeagueTab>('main');
+  // 교류전도 들어갈 때마다 메인부터.
+  const [exchangeTabState, setExchangeTabState] = useState<ExchangeTab>(
+    initialRoute?.tab ?? 'main',
+  );
 
   const meetups = useMeetups();
   /**
@@ -348,6 +360,7 @@ export default function App() {
   // ── Section navigation ─────────────────────────────────────
   const openSection = (section: Exclude<Section, 'home'>) => {
     if (section === 'league') setLeagueTabState('main');
+    if (section === 'exchange') setExchangeTabState('main');
     /*
      * 정모와 번개는 같은 화면을 쓰고 모드만 다르다 — 들어가는 순간 모드를
      * 맞춰 둬야, 명단 화면이 어느 쪽 데이터를 들고 있는지 헷갈리지 않는다.
@@ -382,6 +395,10 @@ export default function App() {
     if (state.section === 'home') return false;
     if (state.section === 'league' && leagueTabState !== 'main') {
       setLeagueTabState('main');
+      return true;
+    }
+    if (state.section === 'exchange' && exchangeTabState !== 'main') {
+      setExchangeTabState('main');
       return true;
     }
     if (teams && state.screen !== 'roster') {
@@ -668,6 +685,7 @@ export default function App() {
   /** 정모·번개 모두 같은 명단/배정/기록 화면을 쓴다. */
   const teams = state.section === 'meetup' || state.section === 'flash';
   const league = state.section === 'league';
+  const exchange = state.section === 'exchange';
 
   const visibleLeagueTabs = useMemo(
     () => LEAGUE_TABS.filter((t) => !t.adminOnly || auth.isAdmin),
@@ -681,6 +699,37 @@ export default function App() {
   const leagueTab = visibleLeagueTabs.some((t) => t.key === leagueTabState)
     ? leagueTabState
     : (visibleLeagueTabs[0]?.key ?? 'main');
+  const visibleExchangeTabs = useMemo(
+    () => EXCHANGE_TABS.filter((t) => !t.adminOnly || auth.isAdmin),
+    [auth.isAdmin],
+  );
+  /*
+   * Until the stored session has been checked, an operator-only tab from the
+   * URL is kept rather than bounced to 메인 — otherwise reloading 경기설정
+   * would always land on 메인.
+   */
+  const exchangeTab =
+    !auth.ready || visibleExchangeTabs.some((t) => t.key === exchangeTabState)
+      ? exchangeTabState
+      : 'main';
+
+  // URL ← 화면. 교류전 밖에서는 해시를 지워 링크가 엉뚱한 탭을 열지 않게 한다.
+  useEffect(() => {
+    writeHash(state.section === 'exchange' ? exchangeHash(exchangeTab) : '');
+  }, [state.section, exchangeTab]);
+
+  // 화면 ← URL. 주소창에서 해시를 직접 바꾸거나 링크를 다시 열었을 때.
+  useEffect(() => {
+    const onHash = () => {
+      const route = parseRoute(location.hash);
+      if (!route) return;
+      setExchangeTabState(route.tab);
+      setState((s) => (s.section === 'exchange' ? s : { ...s, section: 'exchange' }));
+    };
+    window.addEventListener('hashchange', onHash);
+    return () => window.removeEventListener('hashchange', onHash);
+  }, []);
+
   const boardMode = teams && state.screen === 'result' && state.resultView === 'board';
 
   // Keep the standalone status-bar tint in step with the surface behind it.
@@ -839,6 +888,15 @@ export default function App() {
             onNotify={flash}
           />
         )}
+
+        {exchange && (
+          <ExchangeScreen
+            tab={exchangeTab}
+            onGoTab={setExchangeTabState}
+            isAdmin={auth.isAdmin}
+            onNotify={flash}
+          />
+        )}
       </div>
 
       {roll.phase !== 'idle' && (
@@ -911,6 +969,16 @@ export default function App() {
             tabs={visibleLeagueTabs}
             isActive={(key) => leagueTab === key}
             onSelect={goLeagueTab}
+          />
+        </div>
+      )}
+
+      {exchange && (
+        <div className="app__bottom">
+          <TabBar
+            tabs={visibleExchangeTabs}
+            isActive={(key) => exchangeTab === key}
+            onSelect={setExchangeTabState}
           />
         </div>
       )}

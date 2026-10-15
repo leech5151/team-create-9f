@@ -60,7 +60,7 @@ export interface HistoryEntry {
  * hub replaces the switch that used to sit on the roster screen — which mode
  * you are in is now a place you went to, not a toggle you might not notice.
  */
-export type Section = 'home' | 'league' | 'meetup' | 'flash';
+export type Section = 'home' | 'league' | 'meetup' | 'flash' | 'exchange';
 
 /** Screens *within* the 팀짜기 feature. */
 export type Screen = 'roster' | 'draw' | 'result' | 'history';
@@ -79,6 +79,15 @@ export const LEAGUE_TABS: readonly { key: LeagueTab; label: string; adminOnly?: 
   { key: 'standings', label: '경기순위' },
   { key: 'play', label: '경기설정', adminOnly: true },
   { key: 'draw', label: '팀 설정', adminOnly: true },
+  { key: 'players', label: '선수명단' },
+];
+/** Tabs *within* 교류전. */
+export type ExchangeTab = 'main' | 'play' | 'setup' | 'players';
+
+export const EXCHANGE_TABS: readonly { key: ExchangeTab; label: string; adminOnly?: boolean }[] = [
+  { key: 'main', label: '메인' },
+  { key: 'play', label: '경기진행' },
+  { key: 'setup', label: '경기설정', adminOnly: true },
   { key: 'players', label: '선수명단' },
 ];
 export type Phase = 'idle' | 'rolling' | 'landed';

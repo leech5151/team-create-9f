@@ -29,6 +29,12 @@ const FEATURES: Feature[] = [
     bars: ['#0E9D8B', '#39BDAC', '#A8E2DA'],
   },
   {
+    section: 'exchange',
+    title: '교류전',
+    desc: '다른 클럽과 1:1 팀 대결 · 선수명단 · 여성 핸디',
+    bars: ['#B7791F', '#D69E2E', '#F2D48A'],
+  },
+  {
     title: '점수 관리',
     desc: '게임별 점수 기록과 에버리지 추이',
     bars: ['#FF4A21', '#FF7A5C', '#FFB39F'],

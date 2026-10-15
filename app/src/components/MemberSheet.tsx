@@ -14,12 +14,23 @@ interface Props {
   member: Member;
   /** Tier the member currently falls into, shown read-only — it follows the score. */
   tier: Tier | null;
+  /** Overrides the tier explanation, for screens where tiers do not apply. */
+  hint?: string;
+  title?: string;
   onSave: (edit: MemberEdit) => void;
   onDelete: (member: Member) => void;
   onClose: () => void;
 }
 
-export function MemberSheet({ member, tier, onSave, onDelete, onClose }: Props) {
+export function MemberSheet({
+  member,
+  tier,
+  hint,
+  title = '멤버 수정',
+  onSave,
+  onDelete,
+  onClose,
+}: Props) {
   const [name, setName] = useState(member.name);
   const [gender, setGender] = useState<Gender>(member.gender);
   const [avg, setAvg] = useState(String(member.avg));
@@ -37,18 +48,19 @@ export function MemberSheet({ member, tier, onSave, onDelete, onClose }: Props) 
   };
 
   return (
-    <div className="sheetScrim" onClick={onClose} role="dialog" aria-modal="true" aria-label="멤버 수정">
+    <div className="sheetScrim" onClick={onClose} role="dialog" aria-modal="true" aria-label={title}>
       <div className="sheet" onClick={(e) => e.stopPropagation()}>
         <div className="sheet__head">
-          <div className="sheet__title">멤버 수정</div>
+          <div className="sheet__title">{title}</div>
           <button type="button" className="sheet__x" onClick={onClose} aria-label="닫기">
             ×
           </button>
         </div>
         <div className="sheet__hint">
-          {tier === null
-            ? '티어는 참석자들의 점수 순위로 자동 계산됩니다.'
-            : `현재 ${tier}티어 — 점수를 바꾸면 티어도 자동으로 바뀝니다.`}
+          {hint ??
+            (tier === null
+              ? '티어는 참석자들의 점수 순위로 자동 계산됩니다.'
+              : `현재 ${tier}티어 — 점수를 바꾸면 티어도 자동으로 바뀝니다.`)}
         </div>
 
         <div className="field">

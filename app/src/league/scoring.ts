@@ -137,15 +137,49 @@ export function tally(side: SideInput, extraPerGame = 0): TeamTally {
 }
 
 /**
+ * The figures one contest is decided on — a single game, or the 3-game total.
+ *
+ * Tiebreaks used to read `scratchTotal` for every contest, so a drawn *game*
+ * was settled by the whole night's scratch: a side given more handicap in that
+ * game could still take it on the strength of the other two. Each contest now
+ * carries its own handicap and scratch.
+ */
+interface Contest {
+  total: number;
+  scratch: number;
+  /** Net adjustment received in this contest: handicap − penalty + 대진 핸디캡. */
+  handicap: number;
+}
+
+function gameContest(t: TeamTally, gameNo: GameNo): Contest {
+  const g = t.games[gameNo - 1]!;
+  return { total: g.total, scratch: g.scratch, handicap: g.total - g.scratch };
+}
+
+function totalContest(t: TeamTally): Contest {
+  // 총점 가감(지각 패널티)은 핸디가 아니므로 받은 핸디에서 뺀다.
+  return {
+    total: t.grandTotal,
+    scratch: t.scratchTotal,
+    handicap: t.grandTotal - t.scratchTotal - t.totalAdjust,
+  };
+}
+
+/**
  * Tiebreak chain for a drawn game or a drawn grand total, in the order the
- * league applies it: 비핸디 → 하이로우 → 단게임하이.
+ * league applies it: 핸디 → 비핸디 → 하이로우 → 단게임하이.
  *
  * Each comparator returns a positive number when `a` wins. Editing the order —
  * or a single rule — only means touching this array.
  */
-const TIEBREAKS: readonly { name: string; compare: (a: TeamTally, b: TeamTally) => number }[] = [
-  // 비핸디: 핸디캡을 뺀 실투 합계가 높은 쪽이 이긴다.
-  { name: '비핸디', compare: (a, b) => a.scratchTotal - b.scratchTotal },
+const TIEBREAKS: readonly {
+  name: string;
+  compare: (a: TeamTally, b: TeamTally, ca: Contest, cb: Contest) => number;
+}[] = [
+  // 핸디: 동점이면 핸디를 더 많이 받은 쪽이 진다 — 그 게임(또는 총점)에서 받은 양 기준.
+  { name: '핸디', compare: (_a, _b, ca, cb) => cb.handicap - ca.handicap },
+  // 비핸디: 핸디캡을 뺀 실투가 높은 쪽이 이긴다. 역시 그 게임(또는 총점) 기준.
+  { name: '비핸디', compare: (_a, _b, ca, cb) => ca.scratch - cb.scratch },
   // 하이로우: 최고·최저 게임의 차이. 기복이 작은 쪽이 이기므로 부호가 반대다.
   { name: '하이로우', compare: (a, b) => b.spread - a.spread },
   // 단게임하이: 한 게임 최고점이 높은 쪽이 이긴다.
@@ -160,12 +194,12 @@ export interface Decision {
   brokenBy: string | null;
 }
 
-function decide(homeValue: number, awayValue: number, home: TeamTally, away: TeamTally): Decision {
-  if (homeValue !== awayValue) {
-    return { home: homeValue > awayValue ? 1 : 0, away: homeValue > awayValue ? 0 : 1, brokenBy: null };
+function decide(hc: Contest, ac: Contest, home: TeamTally, away: TeamTally): Decision {
+  if (hc.total !== ac.total) {
+    return { home: hc.total > ac.total ? 1 : 0, away: hc.total > ac.total ? 0 : 1, brokenBy: null };
   }
   for (const rule of TIEBREAKS) {
-    const diff = rule.compare(home, away);
+    const diff = rule.compare(home, away, hc, ac);
     if (diff !== 0) {
       return { home: diff > 0 ? 1 : 0, away: diff > 0 ? 0 : 1, brokenBy: rule.name };
     }
@@ -196,9 +230,9 @@ export function scoreMatch(homeSide: SideInput, awaySide: SideInput): MatchResul
   const away = tally(awaySide, awayStrength < homeStrength ? extra : 0);
 
   const gameDecisions = GAME_NOS.map((n) =>
-    decide(home.games[n - 1]!.total, away.games[n - 1]!.total, home, away),
+    decide(gameContest(home, n), gameContest(away, n), home, away),
   );
-  const totalDecision = decide(home.grandTotal, away.grandTotal, home, away);
+  const totalDecision = decide(totalContest(home), totalContest(away), home, away);
 
   const sum = (pick: (d: Decision) => number) =>
     gameDecisions.reduce((acc, d) => acc + pick(d), 0) + pick(totalDecision);
