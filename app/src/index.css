@@ -2802,19 +2802,6 @@ input {
   font-size: 16px;
 }
 
-/*
- * 순위는 반올림한 에버로 매기고, 실제 에버는 그 옆 괄호 안에. 186 과 185.51 은
- * 같은 순위 값이지만 어느 쪽이 실제로 더 높은지는 여기서만 보인다.
- */
-.statRow2__exact {
-  margin-left: 4px;
-  font-style: normal;
-  font-size: 10.5px;
-  font-weight: 700;
-  color: #a8adb4;
-  white-space: nowrap;
-}
-
 /* ── League table (프리미어리그 스타일 순위표) ──────────────── */
 
 /*
@@ -5712,4 +5699,98 @@ input {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+/* 믹스팀·완전섞기 대시보드 — 팀별 합계. 폰에서는 2열, 넓으면 4열. */
+.exTeams {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 14px;
+}
+
+@media (min-width: 700px) {
+  .exTeams {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+.exTeams__cell {
+  min-width: 0;
+  padding: 10px 12px;
+  border-radius: 14px;
+  background: #fff;
+  border: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+.exTeams__cell--lead {
+  border-color: #14161a;
+  box-shadow: inset 0 0 0 1px #14161a;
+}
+
+.exTeams__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+}
+
+.exTeams__name {
+  font-size: 12px;
+  font-weight: 800;
+  color: #4a4f57;
+}
+
+.exTeams__rank {
+  flex: none;
+  padding: 2px 6px;
+  border-radius: 999px;
+  background: #f1f0ec;
+  font-size: 10px;
+  font-weight: 800;
+  color: #6b6f76;
+}
+
+.exTeams__cell--lead .exTeams__rank {
+  background: #ff4a21;
+  color: #fff;
+}
+
+.exTeams__total {
+  margin-top: 2px;
+  font-size: 24px;
+  font-weight: 900;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+}
+
+/* 믹스팀·완전섞기 게임 행 — 점수 세 칸 자리에 1위 팀 하나. */
+.exGameRow__top {
+  grid-column: 2 / 5;
+  min-width: 0;
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 5px;
+  font-size: 13px;
+  font-weight: 800;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.exGameRow__top em {
+  font-style: normal;
+  flex: none;
+  padding: 2px 6px;
+  border-radius: 999px;
+  background: #ff4a21;
+  color: #fff;
+  font-size: 9.5px;
+  font-weight: 800;
+}
+
+.exGameRow__top strong {
+  font-size: 16px;
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
 }

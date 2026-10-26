@@ -27,16 +27,7 @@ export interface PlayerStat {
    * registered 에버리지 in `delta`, and the 에버 향상 list built from it.
    */
   average: number;
-  /**
-   * The average rounded off at the ones digit, so it lands on a multiple of
-   * ten — the MVP measure. 185.7 and 190.2 both rank as 190.
-   *
-   * Banding is what makes the games-played tiebreak do real work: on the exact
-   * figure almost nobody ties, and the ranking would turn on hundredths of a
-   * pin rather than on who has bowled more of the season.
-   */
-  rankAverage: number;
-  /** The unrounded average, shown beside `rankAverage` as the actual figure. */
+  /** The unrounded average — the MVP measure, shown to one decimal. */
   exactAverage: number;
   /** Best single game. */
   highGame: number;
@@ -46,9 +37,6 @@ export interface PlayerStat {
    */
   delta: number | null;
 }
-
-/** MVP 에버는 이 단위로 끊어 매긴다 — 일의 자리에서 반올림. */
-export const AVERAGE_BAND = 10;
 
 export function playerStats(snapshot: LeagueSnapshot, seasonId: string): PlayerStat[] {
   const weekIds = new Set(snapshot.weeks.filter((w) => w.seasonId === seasonId).map((w) => w.id));
@@ -81,7 +69,6 @@ export function playerStats(snapshot: LeagueSnapshot, seasonId: string): PlayerS
       games,
       totalPins: total,
       average,
-      rankAverage: Math.round(exactAverage / AVERAGE_BAND) * AVERAGE_BAND,
       exactAverage,
       highGame: high,
       delta: player.avg === null ? null : average - player.avg,
@@ -91,19 +78,17 @@ export function playerStats(snapshot: LeagueSnapshot, seasonId: string): PlayerS
 }
 
 /**
- * MVP order: highest 에버 first, banded to `AVERAGE_BAND`.
+ * MVP order: highest 에버 first, on the actual average.
  *
- * Ranked on the banded figure, not the exact one, so the order matches the
- * number people read off the screen. Level on that, the bowler with more games
- * ranks higher — the same average over nine games has been earned against more
- * of the season than over three.
+ * Level on that, the bowler with more games ranks higher — the same average
+ * over nine games has been earned against more of the season than over three.
  */
 export function byAverage(stats: readonly PlayerStat[]): PlayerStat[] {
   return stats
     .slice()
     .sort(
       (a, b) =>
-        b.rankAverage - a.rankAverage ||
+        b.exactAverage - a.exactAverage ||
         b.games - a.games ||
         a.player.name.localeCompare(b.player.name, 'ko'),
     );
