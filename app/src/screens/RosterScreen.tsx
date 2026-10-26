@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import type { Member, Options, Tier } from '../types';
+import type { Member, OptionKey, Options, Tier } from '../types';
 import { TIERS } from '../types';
 import { TIER_COLOR } from '../theme';
 import { MAX_LANE_NO } from '../lib/assign';
@@ -10,11 +10,12 @@ import { parseDate, weekdayLabel } from '../league/schedule';
 import type { LoadState } from '../league/useLeague';
 import { useDismissible } from '../hooks/useBackStack';
 
-const OPTION_LABELS: [key: keyof Options, label: string][] = [
-  ['balance', '에버리지 균형'],
-  ['gender', '성별 분배'],
-  ['avoid', '중복 방지'],
-];
+const OPTION_LABELS: Record<OptionKey, string> = {
+  balance: '에버리지 균형',
+  avoid: '중복 방지',
+  sameLane: '같은 레인 방지',
+  gender: '성별 분배',
+};
 
 interface Props {
   roster: readonly Member[];
@@ -37,7 +38,9 @@ interface Props {
   onToggleEditMode: () => void;
   onToggleAttend: (id: string) => void;
   onSetAllAttend: (attending: boolean) => void;
-  onToggleOption: (key: keyof Options) => void;
+  onToggleOption: (key: OptionKey) => void;
+  /** Move an option one place up (-1) or down (1) in the priority order. */
+  onMoveOption: (key: OptionKey, dir: -1 | 1) => void;
   onEditMember: (member: Member) => void;
   onDeleteMember: (member: Member) => void;
   onAddMembers: () => void;
@@ -78,6 +81,7 @@ export function RosterScreen({
   onToggleAttend,
   onSetAllAttend,
   onToggleOption,
+  onMoveOption,
   onEditMember,
   onDeleteMember,
   onAddMembers,
@@ -405,19 +409,42 @@ export function RosterScreen({
           </div>
         )}
 
-        <div className="chips">
-          {OPTION_LABELS.map(([key, label]) => (
-            <button
-              type="button"
-              key={key}
-              className={`chip${opts[key] ? ' chip--on' : ''}`}
-              onClick={() => onToggleOption(key)}
-              aria-pressed={opts[key]}
-            >
-              {label}
-            </button>
+        {/* 위에 있을수록 먼저 지킨다 — 아래 옵션은 위 옵션이 같을 때만 비교된다. */}
+        <ol className="optPriority" aria-label="배정 옵션 우선순위">
+          {opts.order.map((key, i) => (
+            <li className="optPriority__row" key={key}>
+              <span className="optPriority__rank">{i + 1}</span>
+              <button
+                type="button"
+                className={`chip${opts[key] ? ' chip--on' : ''}`}
+                onClick={() => onToggleOption(key)}
+                aria-pressed={opts[key]}
+              >
+                {OPTION_LABELS[key]}
+              </button>
+              <span className="optPriority__moves">
+                <button
+                  type="button"
+                  className="optPriority__move"
+                  onClick={() => onMoveOption(key, -1)}
+                  disabled={i === 0}
+                  aria-label={`${OPTION_LABELS[key]} 우선순위 올리기`}
+                >
+                  ▲
+                </button>
+                <button
+                  type="button"
+                  className="optPriority__move"
+                  onClick={() => onMoveOption(key, 1)}
+                  disabled={i === opts.order.length - 1}
+                  aria-label={`${OPTION_LABELS[key]} 우선순위 내리기`}
+                >
+                  ▼
+                </button>
+              </span>
+            </li>
           ))}
-        </div>
+        </ol>
       </div>
 
       <div className="tierGroups">

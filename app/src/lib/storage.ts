@@ -1,11 +1,13 @@
 import type {
   HistoryEntry,
   Member,
+  OptionKey,
   Options,
   ResultView,
   Screen,
   Section,
 } from '../types';
+import { OPTION_KEYS } from '../types';
 import { MAX_LANE_NO } from './assign';
 
 const KEY = 'bowling-lane-draw/v1';
@@ -39,7 +41,7 @@ export function initialState(): PersistedState {
   return {
     roster: [],
     attend: {},
-    opts: { balance: true, gender: true, avoid: true },
+    opts: { balance: true, gender: true, avoid: true, sameLane: true, order: [...OPTION_KEYS] },
     history: [],
     game: 1,
     section: 'home',
@@ -105,10 +107,18 @@ export function loadState(): PersistedState {
   }
 
   const storedOpts = (s.opts ?? {}) as Record<string, unknown>;
+  // 저장된 순서에서 모르는 값은 버리고, 빠진 옵션은 기본 순서대로 뒤에 붙인다.
+  const storedOrder = Array.isArray(storedOpts.order)
+    ? storedOpts.order.filter((k): k is OptionKey => OPTION_KEYS.includes(k as OptionKey))
+    : [];
+  const order = [...new Set(storedOrder)];
+  for (const key of OPTION_KEYS) if (!order.includes(key)) order.push(key);
   const opts: Options = {
     balance: storedOpts.balance !== false,
     gender: storedOpts.gender !== false,
     avoid: storedOpts.avoid !== false,
+    sameLane: storedOpts.sameLane !== false,
+    order,
   };
 
   const history: HistoryEntry[] = Array.isArray(s.history)

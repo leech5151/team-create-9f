@@ -67,6 +67,7 @@ export function ResultScreen({
           <div className="badges">
             <div className="badge">평균 편차 ±{deviation}</div>
             <div className="badge">{opts.avoid ? '이전 회차 중복 회피' : '중복 허용'}</div>
+            <div className="badge">{opts.sameLane ? '같은 레인 반복 회피' : '같은 레인 허용'}</div>
             <div className="badge">{opts.gender ? '성별 고르게 분배' : '성별 미고려'}</div>
           </div>
 

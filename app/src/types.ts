@@ -26,6 +26,11 @@ export interface Lane {
   avg: number;
 }
 
+export type OptionKey = 'balance' | 'gender' | 'avoid' | 'sameLane';
+
+/** Every option, in the default priority order. */
+export const OPTION_KEYS: readonly OptionKey[] = ['balance', 'avoid', 'sameLane', 'gender'];
+
 export interface Options {
   /** Minimise stddev of per-lane averages. */
   balance: boolean;
@@ -33,6 +38,13 @@ export interface Options {
   gender: boolean;
   /** Penalise pairs that already shared a lane in `history`. */
   avoid: boolean;
+  /** Penalise putting someone on a lane number they already bowled in `history`. */
+  sameLane: boolean;
+  /**
+   * Priority, highest first. A candidate draw wins on the first option where it
+   * is strictly better, so a lower option only breaks ties left by those above.
+   */
+  order: OptionKey[];
 }
 
 /** A finished game, kept for the "중복 방지" penalty and the 기록 screen. */

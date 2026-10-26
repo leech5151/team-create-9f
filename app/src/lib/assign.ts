@@ -1,4 +1,5 @@
-import type { HistoryEntry, Lane, Member, Options, Ranked, Tier } from '../types';
+import type { HistoryEntry, Lane, Member, OptionKey, Options, Ranked, Tier } from '../types';
+import { OPTION_KEYS } from '../types';
 
 /** Fisher–Yates on a copy. */
 export function shuffle<T>(input: readonly T[]): T[] {
@@ -164,7 +165,20 @@ function pastPairs(history: readonly HistoryEntry[]): Set<string> {
   return past;
 }
 
-/** Lower is better. Each enabled option contributes an independently weighted penalty. */
+/** Times each member has bowled each lane number, keyed `id|laneNo`. */
+function pastLaneCounts(history: readonly HistoryEntry[]): Map<string, number> {
+  const counts = new Map<string, number>();
+  for (const entry of history) {
+    entry.lanes.forEach((lane, i) => {
+      for (const id of lane) {
+        const key = `${id}|${entry.firstLane + i}`;
+        counts.set(key, (counts.get(key) ?? 0) + 1);
+      }
+    });
+  }
+  return counts;
+}
+
 /** Sum of a table's two lanes; a trailing odd lane forms a table of its own. */
 function tableTotals(lanes: readonly Ranked[][]): number[] {
   const totals: number[] = [];
@@ -178,43 +192,66 @@ function tableTotals(lanes: readonly Ranked[][]): number[] {
   return totals;
 }
 
-function scoreLanes(
-  lanes: readonly Ranked[][],
-  attending: readonly Member[],
-  opts: Options,
-  past: ReadonlySet<string>,
-): number {
-  let score = 0;
+interface ScoreContext {
+  attending: readonly Member[];
+  past: ReadonlySet<string>;
+  laneCounts: ReadonlyMap<string, number>;
+  firstLane: number;
+}
 
-  if (opts.balance) {
+/** One penalty per option; lower is better. */
+const PENALTY: Record<OptionKey, (lanes: readonly Ranked[][], ctx: ScoreContext) => number> = {
+  balance(lanes) {
     const avgs = lanes.filter((l) => l.length > 0).map((l) => l.reduce((s, m) => s + m.avg, 0) / l.length);
-    score += stddev(avgs) * 3;
-    // Two lanes make a table, and people compare tables — so even them out too.
-    score += stddev(tableTotals(lanes)) * 0.5;
-  }
-
-  if (opts.avoid) {
+    // Two lanes make a table, and people compare tables — so even them out too,
+    // scaled to a per-player figure so it reads in the same pins as the lanes.
+    const perTable = lanes.flat().length / Math.ceil(lanes.length / LANES_PER_TABLE);
+    const spread = stddev(avgs) + stddev(tableTotals(lanes)) / perTable;
+    // A pin's difference is noise; rounding leaves ties for lower priorities to break.
+    return Math.round(spread);
+  },
+  avoid(lanes, { past }) {
+    let repeats = 0;
     for (const lane of lanes) {
       for (let i = 0; i < lane.length; i++) {
         for (let j = i + 1; j < lane.length; j++) {
-          if (past.has(pairKey(lane[i]!.id, lane[j]!.id))) score += 12;
+          if (past.has(pairKey(lane[i]!.id, lane[j]!.id))) repeats++;
         }
       }
     }
-  }
+    return repeats;
+  },
+  sameLane(lanes, { laneCounts, firstLane }) {
+    // Each earlier game on the same lane number counts, so a third visit costs more than a second.
+    let repeats = 0;
+    lanes.forEach((lane, i) => {
+      for (const m of lane) repeats += laneCounts.get(`${m.id}|${firstLane + i}`) ?? 0;
+    });
+    return repeats;
+  },
+  gender(lanes, { attending }) {
+    const target = attending.filter((m) => m.gender === '여').length / lanes.length;
+    let off = 0;
+    for (const lane of lanes) off += Math.abs(lane.filter((m) => m.gender === '여').length - target);
+    return Math.round(off * 100) / 100;
+  },
+};
 
-  if (opts.gender) {
-    const femaleTotal = attending.filter((m) => m.gender === '여').length;
-    const target = femaleTotal / lanes.length;
-    for (const lane of lanes) {
-      score += Math.abs(lane.filter((m) => m.gender === '여').length - target) * 2;
-    }
-  }
-
-  return score;
+/** Enabled penalties in priority order — compared left to right. */
+function scoreLanes(lanes: readonly Ranked[][], opts: Options, ctx: ScoreContext): number[] {
+  return opts.order.filter((key) => opts[key]).map((key) => PENALTY[key](lanes, ctx));
 }
 
-const ITERATIONS = 300;
+/** Lexicographic: the first differing penalty decides. */
+function isBetter(a: readonly number[], b: readonly number[]): boolean {
+  for (let i = 0; i < a.length; i++) {
+    if (a[i] !== b[i]) return a[i]! < b[i]!;
+  }
+  return false;
+}
+
+/** Strict priority needs more samples than a weighted sum to reach the lower options. */
+const ITERATIONS = 1500;
 
 /**
  * One candidate arrangement: each dealing round shuffled, then handed out to
@@ -255,6 +292,8 @@ export function buildLanes(
   opts: Options,
   history: readonly HistoryEntry[],
   laneCount?: number,
+  /** Lane number the first lane will carry — `sameLane` compares real lane numbers. */
+  firstLane = 1,
 ): Lane[] {
   if (attending.length === 0) return [];
 
@@ -267,14 +306,19 @@ export function buildLanes(
 
   const tierOf = tierMap(attending);
   const bands = draftBands(attending, sizes);
-  const past = opts.avoid ? pastPairs(history) : new Set<string>();
-  const tries = opts.balance || opts.avoid || opts.gender ? ITERATIONS : 1;
+  const ctx: ScoreContext = {
+    attending,
+    past: opts.avoid ? pastPairs(history) : new Set<string>(),
+    laneCounts: opts.sameLane ? pastLaneCounts(history) : new Map<string, number>(),
+    firstLane,
+  };
+  const tries = OPTION_KEYS.some((key) => opts[key]) ? ITERATIONS : 1;
 
-  let best: { score: number; lanes: Ranked[][] } | null = null;
+  let best: { score: number[]; lanes: Ranked[][] } | null = null;
   for (let attempt = 0; attempt < tries; attempt++) {
     const lanes = layout(bands, sizes, tierOf);
-    const score = scoreLanes(lanes, attending, opts, past);
-    if (!best || score < best.score) best = { score, lanes };
+    const score = scoreLanes(lanes, opts, ctx);
+    if (!best || isBetter(score, best.score)) best = { score, lanes };
   }
 
   return best!.lanes.map((members, i) => ({

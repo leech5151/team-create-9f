@@ -41,7 +41,7 @@ import type {
   Lane,
   LeagueTab,
   Member,
-  Options,
+  OptionKey,
   Ranked,
   ResultView,
   Screen,
@@ -221,8 +221,19 @@ export default function App() {
       attend: Object.fromEntries(s.roster.map((m) => [m.id, attending])),
     }));
 
-  const toggleOption = (key: keyof Options) =>
+  const toggleOption = (key: OptionKey) =>
     setState((s) => ({ ...s, opts: { ...s.opts, [key]: !s.opts[key] } }));
+
+  /** Swap an option with its neighbour in the priority order; `-1` raises it. */
+  const moveOption = (key: OptionKey, dir: -1 | 1) =>
+    setState((s) => {
+      const order = s.opts.order.slice();
+      const from = order.indexOf(key);
+      const to = from + dir;
+      if (from < 0 || to < 0 || to >= order.length) return s;
+      [order[from], order[to]] = [order[to]!, order[from]!];
+      return { ...s, opts: { ...s.opts, order } };
+    });
 
   /** Applies an edit to one existing member. Tier is not stored, so it follows the new score. */
   const saveMemberEdit = (edit: MemberEdit) => {
@@ -309,10 +320,13 @@ export default function App() {
         s.laneCount !== null && laneSizes(att.length, s.laneCount).length > 0
           ? s.laneCount
           : laneCountFor(att);
-      const built = buildLanes(att, s.opts, s.history, lanes);
+      const game = bumpGame ? s.game + 1 : s.game;
+      // 다시 뽑기라면 이 게임의 지난 결과는 피할 대상이 아니다.
+      const prior = s.history.filter((h) => h.game !== game);
+      const built = buildLanes(att, s.opts, prior, lanes, s.firstLane);
       return {
         ...s,
-        game: bumpGame ? s.game + 1 : s.game,
+        game,
         laneIds: built.map((l) => l.members.map((m) => m.id)),
         queue: buildQueue(att),
         placed: [],
@@ -827,6 +841,7 @@ export default function App() {
             onToggleAttend={toggleAttend}
             onSetAllAttend={setAllAttend}
             onToggleOption={toggleOption}
+            onMoveOption={moveOption}
             tiers={tiers}
             onEditMember={setEditing}
             onDeleteMember={deleteMember}

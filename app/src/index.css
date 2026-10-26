@@ -828,6 +828,53 @@ input {
   color: #fff;
 }
 
+.optPriority {
+  list-style: none;
+  margin: 14px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.optPriority__row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.optPriority__rank {
+  width: 18px;
+  text-align: center;
+  font-size: 12px;
+  font-weight: 800;
+  color: #8a8f98;
+}
+
+.optPriority__row .chip {
+  flex: 1;
+  text-align: left;
+}
+
+.optPriority__moves {
+  display: flex;
+  gap: 4px;
+}
+
+.optPriority__move {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  background: #fff;
+  color: #6b6f76;
+  font-size: 11px;
+}
+
+.optPriority__move:disabled {
+  opacity: 0.35;
+}
+
 .tierGroups {
   padding: 18px var(--gutter) 0;
 }
