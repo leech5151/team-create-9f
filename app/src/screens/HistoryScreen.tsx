@@ -7,6 +7,10 @@ interface Props {
   games: readonly GameLanes[];
   /** Opens the share popup for these games — text and image live in there. */
   onShare: (games: readonly GameLanes[]) => void;
+  /** Wipes every game so the next draw is GAME 1 again. */
+  onClear: () => void;
+  /** Removes one game; later games move up a number. */
+  onDelete: (game: number) => void;
 }
 
 /**
@@ -17,7 +21,7 @@ interface Props {
  * draw in progress, so once it was replaced the earlier lanes could only be
  * read as a list of names. The same lane cards live here instead.
  */
-export function HistoryScreen({ games, onShare }: Props) {
+export function HistoryScreen({ games, onShare, onClear, onDelete }: Props) {
   /** Which game is expanded to its result, if any. */
   const [open, setOpen] = useState<number | null>(null);
 
@@ -32,6 +36,9 @@ export function HistoryScreen({ games, onShare }: Props) {
         </div>
         {games.length > 0 && (
           <div className="histHead__actions">
+            <button type="button" className="histBtn histBtn--danger" onClick={onClear}>
+              기록 지우기
+            </button>
             <button
               type="button"
               className="histBtn histBtn--strong"
@@ -56,20 +63,31 @@ export function HistoryScreen({ games, onShare }: Props) {
             const heads = entry.lanes.reduce((n, l) => n + l.members.length, 0);
             return (
               <div className="histCard" key={entry.game}>
-                <button
-                  type="button"
-                  className="histCard__head"
-                  onClick={() => setOpen(expanded ? null : entry.game)}
-                  aria-expanded={expanded}
-                >
-                  <div className="histCard__title">GAME {entry.game}</div>
-                  <div className="histCard__meta">
-                    {entry.lanes.length}레인 · {heads}명
-                  </div>
-                  <span className={`histCard__caret${expanded ? ' histCard__caret--on' : ''}`}>
-                    ›
-                  </span>
-                </button>
+                <div className="histCard__top">
+                  <button
+                    type="button"
+                    className="histCard__head"
+                    onClick={() => setOpen(expanded ? null : entry.game)}
+                    aria-expanded={expanded}
+                  >
+                    <div className="histCard__title">GAME {entry.game}</div>
+                    <div className="histCard__meta">
+                      {entry.lanes.length}레인 · {heads}명
+                    </div>
+                    <span className={`histCard__caret${expanded ? ' histCard__caret--on' : ''}`}>
+                      ›
+                    </span>
+                  </button>
+                  <button
+                    type="button"
+                    className="histCard__del"
+                    onClick={() => onDelete(entry.game)}
+                    aria-label={`GAME ${entry.game} 기록 삭제`}
+                    title="이 게임 기록 삭제"
+                  >
+                    ×
+                  </button>
+                </div>
 
                 {expanded ? (
                   <>

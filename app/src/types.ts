@@ -74,8 +74,11 @@ export interface HistoryEntry {
  */
 export type Section = 'home' | 'league' | 'meetup' | 'flash' | 'exchange';
 
-/** Screens *within* the 팀짜기 feature. */
-export type Screen = 'roster' | 'draw' | 'result' | 'history';
+/**
+ * Screens *within* the 팀짜기 feature. `members` (회원등록) exists only in 정모
+ * and only for the operator.
+ */
+export type Screen = 'roster' | 'draw' | 'result' | 'history' | 'members';
 
 /** Tabs *within* the 상주리그 feature. */
 export type LeagueTab = 'main' | 'play' | 'schedule' | 'standings' | 'players' | 'draw';

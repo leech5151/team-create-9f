@@ -39,8 +39,6 @@ interface Props {
   onToggleAttend: (id: string) => void;
   onSetAllAttend: (attending: boolean) => void;
   onToggleOption: (key: OptionKey) => void;
-  /** Move an option one place up (-1) or down (1) in the priority order. */
-  onMoveOption: (key: OptionKey, dir: -1 | 1) => void;
   onEditMember: (member: Member) => void;
   onDeleteMember: (member: Member) => void;
   onAddMembers: () => void;
@@ -81,7 +79,6 @@ export function RosterScreen({
   onToggleAttend,
   onSetAllAttend,
   onToggleOption,
-  onMoveOption,
   onEditMember,
   onDeleteMember,
   onAddMembers,
@@ -109,13 +106,98 @@ export function RosterScreen({
   /** In 정모 mode on a date that has never been saved — 저장 will create it. */
   const unsavedMeetup = meetupOn !== null && !savedDates.has(meetupOn);
 
+  /*
+   * 날짜·캘린더·저장이 한 줄. 명단이 비어 있어도(새 날짜로 막 옮긴 정모) 그대로
+   * 보여야 다른 날짜로 다시 옮기거나 저장할 수 있다.
+   */
+  const meetupBar = meetupOn !== null && (
+    <div className="meetupBar">
+      <div className="meetupBar__row">
+        {/*
+          날짜 하나와 캘린더 버튼. 정모마다 칩을 하나씩 붙이면 정모가
+          쌓이는 만큼 줄이 늘어나므로, 어떤 날에 정모가 있는지는 캘린더
+          안에서 검게 표시한다.
+        */}
+        <div className="meetupBar__dates">
+          <span className={`chip${unsavedMeetup ? '' : ' chip--on'}`}>
+            {meetupOn.slice(5).replace('-', '/')}
+            {unsavedMeetup ? ' · 새 정모' : ` (${weekdayLabel(parseDate(meetupOn)!)})`}
+          </span>
+          <button
+            type="button"
+            className={`meetupBar__cal${calOpen ? ' meetupBar__cal--on' : ''}`}
+            onClick={() => setCalOpen((v) => !v)}
+            aria-expanded={calOpen}
+            aria-label="정모 날짜 고르기"
+            title="정모 날짜 고르기"
+          >
+            <svg viewBox="0 0 16 16" aria-hidden="true" focusable="false">
+              <rect x="1.5" y="3" width="13" height="11.5" rx="2" />
+              <path d="M1.5 6.5h13M5 1.5v3M11 1.5v3" />
+            </svg>
+          </button>
+        </div>
+
+        {isAdmin && (
+          <div className="meetupBar__actions">
+            <button
+              type="button"
+              className="meetupBar__save"
+              onClick={() => onSaveMeetup(meetupOn)}
+              // 빈 정모를 저장하면 캘린더에 아무도 없는 날만 남는다.
+              disabled={meetupBusy || empty}
+            >
+              {meetupBusy ? '저장 중…' : '저장'}
+            </button>
+            {!unsavedMeetup && (
+              <button
+                type="button"
+                className="meetupBar__ghost meetupBar__ghost--del"
+                onClick={() => onDeleteMeetup(meetupOn)}
+                disabled={meetupBusy}
+              >
+                삭제
+              </button>
+            )}
+          </div>
+        )}
+      </div>
+
+      {calOpen && (
+        <MeetupCalendar
+          savedDates={savedDates}
+          selected={meetupOn}
+          today={today}
+          canPickNew={isAdmin}
+          busy={meetupBusy}
+          onPick={(metOn) => {
+            setCalOpen(false);
+            onOpenMeetup(metOn);
+          }}
+        />
+      )}
+      {/* 날짜 목록이 비어 있는 이유를 밝혀둔다 — 서버 문제와 정모 없음은 다르다. */}
+      {meetupState === 'offline' && (
+        <div className="meetupBar__note">서버에 연결하지 못해 저장된 정모를 불러오지 못했어요.</div>
+      )}
+      {meetupState === 'unconfigured' && (
+        <div className="meetupBar__note">Supabase 설정이 없어 정모를 저장할 수 없어요.</div>
+      )}
+      {!isAdmin && (
+        <div className="meetupBar__note">
+          운영자가 저장한 명단입니다. 여기서 바꿔도 저장되지 않아요.
+        </div>
+      )}
+    </div>
+  );
+
   if (empty) {
     return (
       <div className="screen">
-        <div className="eyebrow">
-          {meetupOn ? `${meetupOn} · 정모` : `${todayLabel()} · 번개`}
-        </div>
+        <div className="eyebrow">{meetupOn ? `${meetupOn} · 정모` : `${todayLabel()} · 번개`}</div>
         <div className="title">{meetupOn ? '정모 명단' : '참석 명단'}</div>
+
+        {meetupBar}
 
         <div className="blank">
           <div className="blank__title">아직 멤버가 없어요</div>
@@ -200,83 +282,7 @@ export function RosterScreen({
           </div>
         </div>
 
-        {meetupOn !== null && (
-          <div className="meetupBar">
-            {/*
-              날짜 하나와 캘린더 버튼. 정모마다 칩을 하나씩 붙이면 정모가
-              쌓이는 만큼 줄이 늘어나므로, 어떤 날에 정모가 있는지는 캘린더
-              안에서 검게 표시한다.
-            */}
-            <div className="meetupBar__dates">
-              <span className={`chip${unsavedMeetup ? '' : ' chip--on'}`}>
-                {meetupOn.slice(5).replace('-', '/')}
-                {unsavedMeetup ? ' · 새 정모' : ` (${weekdayLabel(parseDate(meetupOn)!)})`}
-              </span>
-              <button
-                type="button"
-                className={`meetupBar__cal${calOpen ? ' meetupBar__cal--on' : ''}`}
-                onClick={() => setCalOpen((v) => !v)}
-                aria-expanded={calOpen}
-                aria-label="정모 날짜 고르기"
-                title="정모 날짜 고르기"
-              >
-                <svg viewBox="0 0 16 16" aria-hidden="true" focusable="false">
-                  <rect x="1.5" y="3" width="13" height="11.5" rx="2" />
-                  <path d="M1.5 6.5h13M5 1.5v3M11 1.5v3" />
-                </svg>
-              </button>
-            </div>
-
-            {calOpen && (
-              <MeetupCalendar
-                savedDates={savedDates}
-                selected={meetupOn}
-                today={today}
-                canPickNew={isAdmin}
-                busy={meetupBusy}
-                onPick={(metOn) => {
-                  setCalOpen(false);
-                  onOpenMeetup(metOn);
-                }}
-              />
-            )}
-            {/* 날짜 목록이 비어 있는 이유를 밝혀둔다 — 서버 문제와 정모 없음은 다르다. */}
-            {meetupState === 'offline' && (
-              <div className="meetupBar__note">
-                서버에 연결하지 못해 저장된 정모를 불러오지 못했어요.
-              </div>
-            )}
-            {meetupState === 'unconfigured' && (
-              <div className="meetupBar__note">Supabase 설정이 없어 정모를 저장할 수 없어요.</div>
-            )}
-            {isAdmin ? (
-              <div className="meetupBar__actions">
-                <button
-                  type="button"
-                  className="meetupBar__save"
-                  onClick={() => onSaveMeetup(meetupOn)}
-                  disabled={meetupBusy}
-                >
-                  {meetupBusy ? '저장 중…' : '저장'}
-                </button>
-                {!unsavedMeetup && (
-                  <button
-                    type="button"
-                    className="meetupBar__ghost meetupBar__ghost--del"
-                    onClick={() => onDeleteMeetup(meetupOn)}
-                    disabled={meetupBusy}
-                  >
-                    삭제
-                  </button>
-                )}
-              </div>
-            ) : (
-              <div className="meetupBar__note">
-                운영자가 저장한 명단입니다. 여기서 바꿔도 저장되지 않아요.
-              </div>
-            )}
-          </div>
-        )}
+        {meetupBar}
 
         <div className="rosterTools">
           <button type="button" className="addMemberBtn" onClick={onAddMembers}>
@@ -409,49 +415,25 @@ export function RosterScreen({
           </div>
         )}
 
-        {/* 위에 있을수록 먼저 지킨다 — 아래 옵션은 위 옵션이 같을 때만 비교된다. */}
-        <ol className="optPriority" aria-label="배정 옵션 우선순위">
-          {opts.order.map((key, i) => (
-            <li className="optPriority__row" key={key}>
-              <span className="optPriority__rank">{i + 1}</span>
-              <button
-                type="button"
-                className={`chip${opts[key] ? ' chip--on' : ''}`}
-                onClick={() => onToggleOption(key)}
-                aria-pressed={opts[key]}
-              >
-                {OPTION_LABELS[key]}
-              </button>
-              <span className="optPriority__moves">
-                <button
-                  type="button"
-                  className="optPriority__move"
-                  onClick={() => onMoveOption(key, -1)}
-                  disabled={i === 0}
-                  aria-label={`${OPTION_LABELS[key]} 우선순위 올리기`}
-                >
-                  ▲
-                </button>
-                <button
-                  type="button"
-                  className="optPriority__move"
-                  onClick={() => onMoveOption(key, 1)}
-                  disabled={i === opts.order.length - 1}
-                  aria-label={`${OPTION_LABELS[key]} 우선순위 내리기`}
-                >
-                  ▼
-                </button>
-              </span>
-            </li>
+        {/* 앞에 있을수록 먼저 지킨다 — 뒤 옵션은 앞 옵션이 같을 때만 비교된다. */}
+        <div className="chips chips--options">
+          {opts.order.map((key) => (
+            <button
+              type="button"
+              key={key}
+              className={`chip${opts[key] ? ' chip--on' : ''}`}
+              onClick={() => onToggleOption(key)}
+              aria-pressed={opts[key]}
+            >
+              {OPTION_LABELS[key]}
+            </button>
           ))}
-        </ol>
+        </div>
       </div>
 
       <div className="tierGroups">
         {TIERS.map((tier) => {
-          const members = roster
-            .filter((m) => tiers.get(m.id) === tier)
-            .sort(byScore);
+          const members = roster.filter((m) => tiers.get(m.id) === tier).sort(byScore);
           if (members.length === 0) return null;
           return (
             <div className="tierGroup" key={tier}>

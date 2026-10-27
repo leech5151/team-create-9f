@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { BottomBar } from './components/BottomBar';
+import { BottomBar, type TeamTab } from './components/BottomBar';
 import { InstallPill } from './components/InstallBanner';
 import { InstallGuideSheet } from './components/InstallGuideSheet';
 import { AddMembersSheet, type MemberDraft } from './components/AddMembersSheet';
@@ -11,10 +11,12 @@ import { useVisualViewport } from './hooks/useVisualViewport';
 import { useBackGuard, useDismissible } from './hooks/useBackStack';
 import { useAdminAuth } from './league/useAdminAuth';
 import { useMeetups } from './meetup/useMeetups';
-import { deleteMeetup, saveMeetup } from './meetup/api';
+import { deleteMeetup, importRegistry, saveMeetup, setMemberGender } from './meetup/api';
+import type { ImportPlan } from './meetup/registry';
 import { formatDate, todayUtc } from './league/schedule';
 import { LoginSheet } from './components/LoginSheet';
 import { useRoll } from './hooks/useRoll';
+import { newMemberId } from './lib/id';
 import { exchangeHash, parseRoute, writeHash } from './lib/route';
 import {
   buildLanes,
@@ -36,6 +38,7 @@ import { TabBar } from './components/TabBar';
 import { DrawScreen } from './screens/DrawScreen';
 import { ResultScreen } from './screens/ResultScreen';
 import { RosterScreen } from './screens/RosterScreen';
+import { MembersScreen } from './screens/MembersScreen';
 import type {
   ExchangeTab,
   Lane,
@@ -66,18 +69,6 @@ const UNDO_MS = 6000;
 interface ToastAction {
   label: string;
   run: () => void;
-}
-
-/**
- * A member id that stays unique across browsers, since members are shared once
- * a 정모 is saved. `randomUUID` needs a secure context; the fallback covers
- * plain-http local testing.
- */
-function newMemberId(): string {
-  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
-    return crypto.randomUUID();
-  }
-  return `m-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
 }
 
 export default function App() {
@@ -122,6 +113,7 @@ export default function App() {
    */
   const [meetupOn, setMeetupOn] = useState<string | null>(null);
   const [meetupBusy, setMeetupBusy] = useState(false);
+  const [registryBusy, setRegistryBusy] = useState(false);
 
   /*
    * Only the session roster is persisted. A loaded 정모 must not be written to
@@ -146,10 +138,7 @@ export default function App() {
   );
 
   // ── Derived ────────────────────────────────────────────────
-  const byId = useMemo(
-    () => new Map(state.roster.map((m) => [m.id, m] as const)),
-    [state.roster],
-  );
+  const byId = useMemo(() => new Map(state.roster.map((m) => [m.id, m] as const)), [state.roster]);
 
   const attending = useMemo(
     () => state.roster.filter((m) => state.attend[m.id]),
@@ -224,17 +213,6 @@ export default function App() {
   const toggleOption = (key: OptionKey) =>
     setState((s) => ({ ...s, opts: { ...s.opts, [key]: !s.opts[key] } }));
 
-  /** Swap an option with its neighbour in the priority order; `-1` raises it. */
-  const moveOption = (key: OptionKey, dir: -1 | 1) =>
-    setState((s) => {
-      const order = s.opts.order.slice();
-      const from = order.indexOf(key);
-      const to = from + dir;
-      if (from < 0 || to < 0 || to >= order.length) return s;
-      [order[from], order[to]] = [order[to]!, order[from]!];
-      return { ...s, opts: { ...s.opts, order } };
-    });
-
   /** Applies an edit to one existing member. Tier is not stored, so it follows the new score. */
   const saveMemberEdit = (edit: MemberEdit) => {
     if (!editing) return;
@@ -266,6 +244,21 @@ export default function App() {
     });
     setAdding(false);
     flash(`${drafts.length}명을 등록했어요`);
+  };
+
+  /** 정모: adds registered members as they are — same id, so past 정모 still point at them. */
+  const pickMembers = (picked: Member[]) => {
+    setState((s) => {
+      const have = new Set(s.roster.map((m) => m.id));
+      const added = picked.filter((m) => !have.has(m.id));
+      return {
+        ...s,
+        roster: [...s.roster, ...added],
+        attend: { ...s.attend, ...Object.fromEntries(added.map((m) => [m.id, true])) },
+      };
+    });
+    setAdding(false);
+    flash(`${picked.length}명을 추가했어요`);
   };
 
   /**
@@ -350,22 +343,93 @@ export default function App() {
     setState((s) => ({ ...s, placed: s.queue.slice() }));
   };
 
-  const finish = () =>
-    setState((s) => ({
-      ...s,
+  const finish = () => {
+    const next: PersistedState = {
+      ...state,
       screen: 'result',
       history: [
-        { game: s.game, lanes: s.laneIds, firstLane: s.firstLane },
-        ...s.history.filter((h) => h.game !== s.game),
+        { game: state.game, lanes: state.laneIds, firstLane: state.firstLane },
+        ...state.history.filter((h) => h.game !== state.game),
       ],
-    }));
+    };
+    setState(next);
+    // 정모는 게임이 끝날 때마다 서버에 남긴다 — 저장을 깜빡해도 기록이 사라지지 않게.
+    if (meetupOn !== null && auth.isAdmin) {
+      void storeMeetup(meetupOn, next, `GAME ${state.game} 기록을 저장했어요`);
+    }
+  };
+
+  /**
+   * Wipes 기록 and the draw in progress so the next draw starts at GAME 1.
+   *
+   * Old games otherwise pile up — the session roster keeps them across days —
+   * and a fresh first draw comes out as GAME 4. In 정모 the operator's wipe is
+   * saved straight away, or reopening would bring the games back.
+   */
+  const clearHistory = () => {
+    const count = state.history.length;
+    if (!window.confirm(`기록 ${count}게임을 모두 지울까요?\n다음 배정은 GAME 1부터 시작해요.`))
+      return;
+    roll.reset();
+    const next: PersistedState = {
+      ...state,
+      history: [],
+      game: 1,
+      laneIds: [],
+      queue: [],
+      placed: [],
+    };
+    setState(next);
+    if (meetupOn !== null && auth.isAdmin) {
+      void storeMeetup(meetupOn, next, '기록을 지웠어요');
+    } else {
+      flash('기록을 지웠어요');
+    }
+  };
+
+  /**
+   * Removes one game from 기록. Later games move up a number so 기록 reads
+   * GAME 1, 2, 3 with no gap; a draw still on screen for that game goes too.
+   */
+  const deleteGame = (game: number) => {
+    if (!window.confirm(`GAME ${game} 기록을 지울까요?`)) return;
+    const renumber = (n: number) => (n > game ? n - 1 : n);
+    const history = state.history
+      .filter((h) => h.game !== game)
+      .map((h) => ({ ...h, game: renumber(h.game) }));
+    const dropDraw = state.game === game;
+    if (dropDraw) roll.reset();
+    const next: PersistedState = {
+      ...state,
+      history,
+      ...(dropDraw
+        ? {
+            // 지운 게임을 보고 있었다면 배정도 비우고, 다음 배정은 남은 마지막 다음 번호로.
+            game: Math.max(1, history.length),
+            laneIds: [],
+            queue: [],
+            placed: [],
+            screen: state.screen === 'history' ? 'history' : 'roster',
+          }
+        : { game: renumber(state.game) }),
+    };
+    setState(next);
+    if (meetupOn !== null && auth.isAdmin) {
+      void storeMeetup(meetupOn, next, `GAME ${game} 기록을 지웠어요`);
+    } else {
+      flash(`GAME ${game} 기록을 지웠어요`);
+    }
+  };
 
   /**
    * Re-randomise the current game. Clearing `placed` alone would replay the
    * *same* lanes, so this rebuilds the assignment and the draw order too.
    */
   const redraw = () => {
-    if (state.placed.length > 0 && !window.confirm('지금까지 뽑은 결과를 지우고 레인을 다시 배정할까요?')) {
+    if (
+      state.placed.length > 0 &&
+      !window.confirm('지금까지 뽑은 결과를 지우고 레인을 다시 배정할까요?')
+    ) {
       return;
     }
     startAssignment(false);
@@ -433,7 +497,7 @@ export default function App() {
   useDismissible(loginOpen, () => setLoginOpen(false));
   useDismissible(installGuide, () => setInstallGuide(false));
 
-  const goTab = (key: 'roster' | 'draw' | 'history') => {
+  const goTab = (key: TeamTab) => {
     const target: Screen = key === 'draw' && lanes.length === 0 ? 'roster' : key;
     setState((s) => ({ ...s, screen: target }));
   };
@@ -467,12 +531,28 @@ export default function App() {
   const openMeetup = (metOn: string) => {
     const meetup = meetups.snapshot.meetups.find((m) => m.metOn === metOn);
     /*
-     * No 정모 saved for that date yet — start one from whatever is on screen,
-     * so the operator can draw first and save afterwards. Nothing is written
-     * until 저장, so this is safe even if they change their mind.
+     * No 정모 saved for that date yet — start one with an empty roster, filled
+     * from the 회원 명단 (and guests typed in). Nothing is written until 저장,
+     * so this is safe even if they change their mind. The session roster is
+     * untouched in localStorage and comes back on leaving 정모.
      */
     if (!meetup) {
+      roll.reset();
+      setEditMode(false);
       setMeetupOn(metOn);
+      setState((s) => ({
+        ...s,
+        roster: [],
+        attend: {},
+        // 기록도 정모마다 따로 — 다른 정모나 번개의 게임이 섞이지 않게.
+        history: [],
+        game: 1,
+        laneCount: null,
+        laneIds: [],
+        queue: [],
+        placed: [],
+        screen: 'roster',
+      }));
       flash(`${metOn} 정모를 새로 만듭니다 — 저장을 누르면 공유돼요`);
       return;
     }
@@ -493,14 +573,23 @@ export default function App() {
       .sort(([a], [b]) => a - b)
       .map(([, group]) => group.sort((x, y) => x.slot - y.slot).map((a) => a.memberId));
     const queue = laneIds.flat();
+    const history = meetups.snapshot.games
+      .filter((g) => g.meetupId === meetup.id)
+      .map(({ game, lanes, firstLane }) => ({ game, lanes, firstLane }));
 
     roll.reset();
     setEditMode(false);
     setMeetupOn(meetup.metOn);
     setState((s) => ({
       ...s,
-      roster: meetups.snapshot.members.slice(),
+      // 그 정모에 온 사람만 — 회원 전체를 깔면 수백 명이 명단에 뜬다.
+      roster: meetups.snapshot.members
+        .filter((m) => attending.has(m.id))
+        .map(({ id, name, gender, avg }) => ({ id, name, gender, avg })),
       attend: Object.fromEntries([...attending].map((id) => [id, true])),
+      history,
+      // 마지막으로 끝낸 게임을 보고 있는 상태 — 다음 배정은 그다음 번호가 된다.
+      game: history.reduce((max, h) => Math.max(max, h.game), 1),
       laneCount: meetup.laneCount > 0 ? meetup.laneCount : null,
       firstLane: meetup.firstLane,
       laneIds,
@@ -522,31 +611,75 @@ export default function App() {
   const closeMeetup = (): boolean => {
     if (meetupOn === null) return true;
     const unsaved = !meetups.snapshot.meetups.some((m) => m.metOn === meetupOn);
-    if (unsaved && !window.confirm('저장하지 않은 정모입니다. 나가면 이 배정은 사라집니다.\n계속할까요?')) {
+    if (
+      unsaved &&
+      !window.confirm('저장하지 않은 정모입니다. 나가면 이 배정은 사라집니다.\n계속할까요?')
+    ) {
       return false;
     }
     roll.reset();
     setEditMode(false);
     setMeetupOn(null);
-    setState((s) => ({ ...loadState(), section: s.section, screen: s.screen }));
+    setState((s) => ({
+      ...loadState(),
+      section: s.section,
+      // 회원등록은 정모에만 있으므로 번개로 가져가지 않는다.
+      screen: s.screen === 'members' ? 'roster' : s.screen,
+    }));
     return true;
   };
 
+  // ── 회원등록 ────────────────────────────────────────────────
+  const applyImport = async (plan: ImportPlan) => {
+    setRegistryBusy(true);
+    try {
+      await importRegistry(plan.rows, plan.removedIds);
+      await meetups.refresh();
+      flash(`회원 ${plan.rows.length}명을 반영했어요`);
+    } catch (e) {
+      flash(e instanceof Error ? e.message : '회원 명단 저장에 실패했어요');
+    } finally {
+      setRegistryBusy(false);
+    }
+  };
+
+  const changeGender = async (id: string, gender: Member['gender']) => {
+    setRegistryBusy(true);
+    try {
+      await setMemberGender(id, gender);
+      await meetups.refresh();
+      // 이미 정모 명단에 올라 있으면 거기도 맞춘다.
+      setState((s) => ({
+        ...s,
+        roster: s.roster.map((m) => (m.id === id ? { ...m, gender } : m)),
+      }));
+    } catch (e) {
+      flash(e instanceof Error ? e.message : '성별 저장에 실패했어요');
+    } finally {
+      setRegistryBusy(false);
+    }
+  };
+
   /** Writes the roster, attendance and drawn lanes to the 정모 for `metOn`. */
-  const storeMeetup = async (metOn: string) => {
+  const storeMeetup = async (
+    metOn: string,
+    s: PersistedState = state,
+    done = `${metOn} 정모로 저장했어요`,
+  ) => {
     setMeetupBusy(true);
     try {
       await saveMeetup({
         metOn,
         title: null,
-        firstLane: state.firstLane,
-        members: state.roster,
-        attendingIds: attending.map((m) => m.id),
-        lanes: state.laneIds,
+        firstLane: s.firstLane,
+        members: s.roster,
+        attendingIds: s.roster.filter((m) => s.attend[m.id]).map((m) => m.id),
+        lanes: s.laneIds,
+        games: s.history,
       });
       await meetups.refresh();
       setMeetupOn(metOn);
-      flash(`${metOn} 정모로 저장했어요`);
+      flash(done);
     } catch (e) {
       flash(e instanceof Error ? e.message : '정모 저장에 실패했어요');
     } finally {
@@ -670,15 +803,19 @@ export default function App() {
     [state.history, byId],
   );
 
-
   // ── Bottom bar wiring ──────────────────────────────────────
+  /** 회원등록 is the operator's, and only in 정모. */
+  const canRegister = state.section === 'meetup' && meetupOn !== null && auth.isAdmin;
+  // 로그아웃하거나 번개로 넘어가면 회원등록 탭이 사라지므로 명단으로 돌린다.
+  const screen: Screen = state.screen === 'members' && !canRegister ? 'roster' : state.screen;
+
   const ctaLabel = (() => {
-    if (state.screen === 'roster') {
+    if (screen === 'roster') {
       if (state.roster.length === 0) return '멤버를 추가해 주세요';
       if (attending.length === 0) return '참석자를 1명 이상 선택하세요';
       return `${attending.length}명 · ${plannedLaneCount}레인 배정하기`;
     }
-    if (state.screen === 'draw') {
+    if (screen === 'draw') {
       if (revealedAll) return '결과 보기';
       if (roll.phase !== 'idle') return '뽑는 중…';
       return `남은 ${waiting.length}명 자동 배정`;
@@ -687,8 +824,11 @@ export default function App() {
   })();
 
   const onCta = () => {
-    if (state.screen === 'roster') return startAssignment(false);
-    if (state.screen === 'draw') {
+    // 이미 끝낸 게임 번호로 다시 뽑으면 그 기록을 덮어쓰므로 다음 번호로 넘긴다.
+    if (screen === 'roster') {
+      return startAssignment(state.history.some((h) => h.game === state.game));
+    }
+    if (screen === 'draw') {
       if (revealedAll) return finish();
       if (roll.phase === 'idle') return fillRest();
       return;
@@ -744,7 +884,7 @@ export default function App() {
     return () => window.removeEventListener('hashchange', onHash);
   }, []);
 
-  const boardMode = teams && state.screen === 'result' && state.resultView === 'board';
+  const boardMode = teams && screen === 'result' && state.resultView === 'board';
 
   // Keep the standalone status-bar tint in step with the surface behind it.
   useEffect(() => {
@@ -801,11 +941,7 @@ export default function App() {
                   운영자
                 </button>
               ) : (
-                <button
-                  type="button"
-                  className="authPill"
-                  onClick={() => setLoginOpen(true)}
-                >
+                <button type="button" className="authPill" onClick={() => setLoginOpen(true)}>
                   로그인
                 </button>
               ))}
@@ -822,7 +958,7 @@ export default function App() {
           />
         )}
 
-        {teams && state.screen === 'roster' && (
+        {teams && screen === 'roster' && (
           <RosterScreen
             roster={state.roster}
             attend={state.attend}
@@ -841,7 +977,6 @@ export default function App() {
             onToggleAttend={toggleAttend}
             onSetAllAttend={setAllAttend}
             onToggleOption={toggleOption}
-            onMoveOption={moveOption}
             tiers={tiers}
             onEditMember={setEditing}
             onDeleteMember={deleteMember}
@@ -860,7 +995,7 @@ export default function App() {
           />
         )}
 
-        {teams && state.screen === 'draw' && (
+        {teams && screen === 'draw' && (
           <DrawScreen
             game={state.game}
             lanes={lanes}
@@ -876,7 +1011,7 @@ export default function App() {
           />
         )}
 
-        {teams && state.screen === 'result' && (
+        {teams && screen === 'result' && (
           <ResultScreen
             game={state.game}
             lanes={lanes}
@@ -888,10 +1023,25 @@ export default function App() {
           />
         )}
 
-        {teams && state.screen === 'history' && (
+        {teams && screen === 'history' && (
           <HistoryScreen
             games={historyGames}
             onShare={(g) => setSharing(g.length === 0 ? null : [...g])}
+            onClear={clearHistory}
+            onDelete={deleteGame}
+          />
+        )}
+
+        {teams && screen === 'members' && (
+          <MembersScreen
+            registry={meetups.snapshot.registry}
+            registryReady={meetups.snapshot.registryReady}
+            loadState={meetups.state}
+            loadError={meetups.error}
+            saved={meetups.snapshot.members}
+            busy={registryBusy}
+            onApply={applyImport}
+            onSetGender={(id, gender) => void changeGender(id, gender)}
           />
         )}
 
@@ -941,7 +1091,18 @@ export default function App() {
         />
       )}
 
-      {adding && <AddMembersSheet onSave={addMembers} onClose={() => setAdding(false)} />}
+      {adding && (
+        <AddMembersSheet
+          onSave={addMembers}
+          onClose={() => setAdding(false)}
+          {...(meetupOn !== null && {
+            title: '정모 인원 추가',
+            registry: meetups.snapshot.registry,
+            added: new Set(byId.keys()),
+            onPick: pickMembers,
+          })}
+        />
+      )}
 
       {editing && (
         <MemberSheet
@@ -953,12 +1114,7 @@ export default function App() {
         />
       )}
 
-      {loginOpen && (
-        <LoginSheet
-          onSignIn={auth.signIn}
-          onClose={() => setLoginOpen(false)}
-        />
-      )}
+      {loginOpen && <LoginSheet onSignIn={auth.signIn} onClose={() => setLoginOpen(false)} />}
 
       {toast && (
         <div className="toast">
@@ -1001,19 +1157,18 @@ export default function App() {
       {/* The hub has no CTA or tabs — those belong to the feature you are inside. */}
       {teams && (
         <BottomBar
-          screen={state.screen}
-          ctaVisible={state.screen !== 'history'}
+          screen={screen}
+          ctaVisible={screen !== 'history' && screen !== 'members'}
           ctaLabel={ctaLabel}
           ctaDisabled={
-            (state.screen === 'roster' && (state.roster.length === 0 || attending.length === 0)) ||
-            (state.screen === 'draw' && roll.phase !== 'idle')
+            (screen === 'roster' && (state.roster.length === 0 || attending.length === 0)) ||
+            (screen === 'draw' && roll.phase !== 'idle')
           }
-          resetVisible={
-            (state.screen === 'draw' || state.screen === 'result') && roll.phase === 'idle'
-          }
+          resetVisible={(screen === 'draw' || screen === 'result') && roll.phase === 'idle'}
           onCta={onCta}
           onReset={redraw}
           onTab={goTab}
+          showMembers={canRegister}
         />
       )}
     </div>
