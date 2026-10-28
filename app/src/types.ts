@@ -72,13 +72,10 @@ export interface HistoryEntry {
  * hub replaces the switch that used to sit on the roster screen — which mode
  * you are in is now a place you went to, not a toggle you might not notice.
  */
-export type Section = 'home' | 'league' | 'meetup' | 'flash' | 'exchange';
+export type Section = 'home' | 'league' | 'meetup' | 'flash' | 'exchange' | 'members';
 
-/**
- * Screens *within* the 팀짜기 feature. `members` (회원등록) exists only in 정모
- * and only for the operator.
- */
-export type Screen = 'roster' | 'draw' | 'result' | 'history' | 'members';
+/** Screens *within* the 팀짜기 feature. */
+export type Screen = 'roster' | 'draw' | 'result' | 'history';
 
 /** Tabs *within* the 상주리그 feature. */
 export type LeagueTab = 'main' | 'play' | 'schedule' | 'standings' | 'players' | 'draw';
@@ -104,6 +101,13 @@ export const EXCHANGE_TABS: readonly { key: ExchangeTab; label: string; adminOnl
   { key: 'play', label: '경기진행' },
   { key: 'setup', label: '경기설정', adminOnly: true },
   { key: 'players', label: '선수명단' },
+];
+/** Tabs *within* 회원관리 — the 정모 회원 명단 and its scores. */
+export type MembersTab = 'register' | 'scores';
+
+export const MEMBERS_TABS: readonly { key: MembersTab; label: string; adminOnly?: boolean }[] = [
+  { key: 'scores', label: '점수관리' },
+  { key: 'register', label: '회원등록', adminOnly: true },
 ];
 export type Phase = 'idle' | 'rolling' | 'landed';
 export type ResultView = 'cards' | 'board';

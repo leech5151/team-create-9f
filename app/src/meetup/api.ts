@@ -73,6 +73,10 @@ const MISSING_GAMES_TABLE =
 
 /** Postgres "undefined_column" — the registry columns are not there yet. */
 const UNDEFINED_COLUMN = '42703';
+/** int 컬럼에 183.4 를 넣으려 할 때 — migration-013 전. */
+const INVALID_INTEGER = '22P02';
+const INTEGER_AVG =
+  '서버 DB 점수 칸이 정수라 소수점 점수를 저장할 수 없어요. Supabase SQL Editor에서 supabase/migration-013-meetup-avg-decimal.sql 을 실행해 주세요.';
 
 class NotConfiguredError extends Error {
   constructor() {
@@ -217,7 +221,11 @@ export async function saveMeetup(draft: MeetupDraft): Promise<string> {
       })),
       { onConflict: 'id' },
     );
-    if (upserted.error) throw new Error(upserted.error.message);
+    if (upserted.error) {
+      throw new Error(
+        upserted.error.code === INVALID_INTEGER ? INTEGER_AVG : upserted.error.message,
+      );
+    }
   }
 
   const cleared = await db.from('meetup_attendees').delete().eq('meetup_id', meetupId);
@@ -293,7 +301,7 @@ export async function importRegistry(
       })),
       { onConflict: 'id' },
     );
-    if (error) throw new Error(error.message);
+    if (error) throw new Error(error.code === INVALID_INTEGER ? INTEGER_AVG : error.message);
   }
 
   // Ids ride in the query string, so a long list goes in chunks.

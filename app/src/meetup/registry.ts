@@ -41,13 +41,16 @@ export const byActivity = (a: RegistryMember, b: RegistryMember) =>
   (b.lastPlayed ?? '').localeCompare(a.lastPlayed ?? '') || a.name.localeCompare(b.name, 'ko');
 
 /** "19890620" → "89년생" — enough to tell two members of the same name apart. */
+/** "183.4", and plain "183" for a whole number. */
+export const avgLabel = (avg: number) => String(Math.round(avg * 10) / 10);
+
 export const birthLabel = (birth: string | null) => (birth ? `${birth.slice(2, 4)}년생` : '');
 
 export interface RecordRow {
   recordNo: number;
   name: string;
   birth: string | null;
-  /** Rounded mean of the last `RECENT_GAMES` scores; 0 with no games. */
+  /** Mean of the last `RECENT_GAMES` scores to one decimal; 0 with no games. */
   avg: number;
   games: number;
   lastPlayed: string | null;
@@ -100,6 +103,9 @@ export function parseRecordSheet(rows: SheetRows): RecordRow[] {
     const name = (cells.get(cols.name) ?? '').trim();
     // Placeholder rows for one-off visitors are not members.
     if (!name || name === '게스트' || seen.has(recordNo)) continue;
+    // 회원은 생년월일이 적혀 있다 — 비어 있으면 회원이 아닌 사람이라 뺀다.
+    const birth = cols.birth ? normaliseBirth(cells.get(cols.birth)) : null;
+    if (cols.birth && !birth) continue;
     seen.add(recordNo);
 
     const played: [date: string, score: number][] = [];
@@ -108,14 +114,15 @@ export function parseRecordSheet(rows: SheetRows): RecordRow[] {
       if (Number.isFinite(score) && score > 0 && score <= MAX_SCORE) played.push([date, score]);
     }
     const recent = played.slice(-RECENT_GAMES);
+    // 소수점 한 자리까지 — 183.4
     const avg = recent.length
-      ? Math.round(recent.reduce((s, [, v]) => s + v, 0) / recent.length)
+      ? Math.round((recent.reduce((s, [, v]) => s + v, 0) / recent.length) * 10) / 10
       : 0;
 
     out.push({
       recordNo,
       name: name.slice(0, 20),
-      birth: cols.birth ? normaliseBirth(cells.get(cols.birth)) : null,
+      birth,
       avg,
       games: played.length,
       lastPlayed: played.length ? isoDate(played[played.length - 1]![0]) : null,

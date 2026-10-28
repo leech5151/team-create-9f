@@ -21,7 +21,12 @@ body {
 
 body {
   background: #edebe6;
-  font-family: Pretendard, -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  font-family:
+    Pretendard,
+    -apple-system,
+    BlinkMacSystemFont,
+    system-ui,
+    sans-serif;
   -webkit-font-smoothing: antialiased;
   -webkit-tap-highlight-color: transparent;
   color: #14161a;
@@ -152,7 +157,9 @@ input {
 
 @media (min-width: 460px) {
   .app {
-    box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.06), 0 24px 60px rgba(0, 0, 0, 0.1);
+    box-shadow:
+      0 0 0 1px rgba(0, 0, 0, 0.06),
+      0 24px 60px rgba(0, 0, 0, 0.1);
   }
 }
 
@@ -344,7 +351,9 @@ input {
   border: 1px solid rgba(0, 0, 0, 0.06);
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
   text-align: left;
-  transition: border-color 0.15s ease, transform 0.1s ease;
+  transition:
+    border-color 0.15s ease,
+    transform 0.1s ease;
   animation: riseIn 0.3s ease both;
 }
 
@@ -922,7 +931,9 @@ input {
   color: #c93a16;
   background: rgba(201, 58, 22, 0.07);
   border-left: 1px solid rgba(0, 0, 0, 0.05);
-  transition: background 0.15s ease, color 0.15s ease;
+  transition:
+    background 0.15s ease,
+    color 0.15s ease;
 }
 
 .memberRow__del:hover {
@@ -1010,8 +1021,7 @@ input {
   display: grid;
   /* minmax(0, …) — 긴 이름이 자기 몫보다 트랙을 넓히지 못하게. 그래야 열이
      모든 행에서 같은 자리에 온다. 넘치는 글자는 말줄임. */
-  grid-template-columns:
-    minmax(0, 1.4fr) minmax(0, 0.7fr) minmax(0, 0.9fr) minmax(0, 1.5fr);
+  grid-template-columns: minmax(0, 1.4fr) minmax(0, 0.7fr) minmax(0, 0.9fr) minmax(0, 1.5fr);
   column-gap: 6px;
   padding: 11px 14px;
   text-align: center;
@@ -1019,8 +1029,7 @@ input {
 
 /* 수정 칸은 운영자에게만 — 없을 때 빈 트랙이 남지 않게 템플릿을 따로 둔다. */
 .memberRow__main--players.memberRow__main--editable {
-  grid-template-columns:
-    minmax(0, 1.4fr) minmax(0, 0.7fr) minmax(0, 0.9fr) minmax(0, 1.5fr) 26px;
+  grid-template-columns: minmax(0, 1.4fr) minmax(0, 0.7fr) minmax(0, 0.9fr) minmax(0, 1.5fr) 26px;
 }
 
 /*
@@ -1286,7 +1295,9 @@ input {
   font-weight: 800;
   color: #6b6f76;
   white-space: nowrap;
-  transition: border-color 0.15s ease, color 0.15s ease;
+  transition:
+    border-color 0.15s ease,
+    color 0.15s ease;
 }
 
 .rosterTools__toggle:hover {
@@ -1313,7 +1324,9 @@ input {
   font-weight: 800;
   color: var(--muted);
   white-space: nowrap;
-  transition: border-color 0.15s ease, color 0.15s ease;
+  transition:
+    border-color 0.15s ease,
+    color 0.15s ease;
 }
 
 .authPill:hover {
@@ -2687,7 +2700,9 @@ input {
   background: #fff;
   border: 1px solid rgba(0, 0, 0, 0.1);
   text-align: left;
-  transition: border-color 0.15s ease, background 0.15s ease;
+  transition:
+    border-color 0.15s ease,
+    background 0.15s ease;
 }
 
 .claimRow--on {
@@ -3274,7 +3289,9 @@ input {
   font-size: 14px;
   font-weight: 800;
   color: #14161a;
-  transition: border-color 0.15s ease, color 0.15s ease;
+  transition:
+    border-color 0.15s ease,
+    color 0.15s ease;
 }
 
 .addMemberBtn:hover {
@@ -3387,7 +3404,10 @@ input {
   font-weight: 700;
   letter-spacing: -0.02em;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
-  transition: border-color 0.15s ease, color 0.15s ease, transform 0.1s ease;
+  transition:
+    border-color 0.15s ease,
+    color 0.15s ease,
+    transform 0.1s ease;
 }
 
 .nameBtn:hover:not(:disabled) {
@@ -3425,7 +3445,9 @@ input {
   border: 2px solid rgba(0, 0, 0, 0.07);
   padding: 11px;
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.06);
-  transition: border-color 0.25s ease, box-shadow 0.25s ease;
+  transition:
+    border-color 0.25s ease,
+    box-shadow 0.25s ease;
 }
 
 .laneCard--hot {
@@ -3548,7 +3570,9 @@ input {
   align-items: center;
   justify-content: center;
   flex: none;
-  transition: background 0.15s ease, color 0.15s ease;
+  transition:
+    background 0.15s ease,
+    color 0.15s ease;
 }
 
 .slot__undo:hover {
@@ -4899,7 +4923,9 @@ input {
   font-size: 16px;
   font-weight: 800;
   box-shadow: 0 6px 18px rgba(255, 74, 33, 0.32);
-  transition: transform 0.1s ease, opacity 0.15s ease;
+  transition:
+    transform 0.1s ease,
+    opacity 0.15s ease;
 }
 
 .cta__main:active:not(:disabled) {
@@ -4925,7 +4951,9 @@ input {
   font-size: 14px;
   font-weight: 800;
   flex: none;
-  transition: border-color 0.15s ease, color 0.15s ease;
+  transition:
+    border-color 0.15s ease,
+    color 0.15s ease;
 }
 
 .cta__reset:hover {
@@ -5028,7 +5056,9 @@ input {
   border: 1px solid rgba(0, 0, 0, 0.1);
   background: #fff;
   text-align: left;
-  transition: border-color 0.15s ease, background 0.15s ease;
+  transition:
+    border-color 0.15s ease,
+    background 0.15s ease;
 }
 
 .exchangeSide--on {
@@ -5968,6 +5998,35 @@ input {
   color: #4a4f57;
 }
 
+.registryHead__tools {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+/* 검색칸과 같은 높이·모서리 — 나란히 놓여 한 줄로 읽힌다. */
+.registryHead__btn {
+  flex: none;
+  height: 34px;
+  padding: 0 12px;
+  border-radius: 10px;
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  background: #fff;
+  font-size: 12px;
+  font-weight: 800;
+  color: #4a4f57;
+  white-space: nowrap;
+}
+
+.registryHead__btn:disabled {
+  opacity: 0.5;
+}
+
+.registryHead__tools .registrySearch {
+  width: 130px;
+}
+
 .registrySearch {
   min-width: 0;
   width: 160px;
@@ -6061,6 +6120,73 @@ input {
   font-weight: 800;
   color: #4a4f57;
   font-variant-numeric: tabular-nums;
+}
+
+/* ── 회원관리 › 점수관리 ────────────────────────────────── */
+
+/* 뱃지 칸이 행의 한가운데 오도록 양옆을 같은 1fr 로 나눈다. */
+.scoreRow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 84px minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-top: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+.card > .scoreRow:first-child {
+  border-top: 0;
+}
+
+.scoreRow__who {
+  min-width: 0;
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+
+.scoreRow__who .registryRow__no {
+  width: 22px;
+}
+
+.scoreRow__who .memberRow__name {
+  flex: none;
+  font-size: 14px;
+}
+
+.scoreRow__rank {
+  display: flex;
+  justify-content: center;
+}
+
+.scoreRow__avg {
+  text-align: right;
+  font-size: 13px;
+  font-weight: 800;
+  color: #4a4f57;
+  font-variant-numeric: tabular-nums;
+}
+
+.scoreRow__avg--high {
+  color: #e5322d;
+}
+
+.rankBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  height: 22px;
+  padding: 0 8px 0 6px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.rankBadge__icon {
+  flex: none;
+  width: 12px;
+  height: 12px;
 }
 
 /* ── 정모 인원 추가: 회원 선택 / 게스트·신입 입력 ─────────── */

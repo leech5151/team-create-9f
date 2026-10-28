@@ -2,6 +2,7 @@ import { useMemo, useRef, useState } from 'react';
 import type { Gender, Member } from '../types';
 import {
   RECENT_GAMES,
+  avgLabel,
   birthLabel,
   byActivity,
   parseRecordSheet,
@@ -27,7 +28,7 @@ interface Props {
 }
 
 /**
- * 회원등록 — the 정모 회원 명단, built only by importing the 칠텐 기록등록 양식.
+ * 회원관리 › 회원등록 — the 정모 회원 명단, built only by importing the 칠텐 기록등록 양식.
  *
  * Operator-only. Guests and newcomers are typed in on the 명단 screen instead
  * and never land here.
@@ -90,7 +91,7 @@ export function MembersScreen({
 
   return (
     <div className="screen">
-      <div className="eyebrow">정모 · 운영자</div>
+      <div className="eyebrow">회원관리 · 운영자</div>
       <div className="title">회원등록</div>
 
       <div className="registryImport">
@@ -217,7 +218,7 @@ export function MembersScreen({
                 {m.gender}
               </button>
               <div className="registryRow__avg">
-                {m.games > 0 || m.recordNo === null ? m.avg : '–'}
+                {m.games > 0 || m.recordNo === null ? avgLabel(m.avg) : '–'}
               </div>
             </div>
           ))}

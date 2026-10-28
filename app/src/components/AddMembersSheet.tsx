@@ -171,7 +171,7 @@ export function AddMembersSheet({
             <div className="pickList">
               {candidates.length === 0 && (
                 <div className="registryEmpty">
-                  추가할 회원이 없어요. 회원등록 탭에서 엑셀을 가져와 주세요.
+                  추가할 회원이 없어요. 홈 › 회원관리 › 회원등록에서 엑셀을 가져와 주세요.
                 </div>
               )}
               {candidates.length > 0 && shown.length === 0 && (

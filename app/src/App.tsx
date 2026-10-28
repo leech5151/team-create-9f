@@ -39,11 +39,13 @@ import { DrawScreen } from './screens/DrawScreen';
 import { ResultScreen } from './screens/ResultScreen';
 import { RosterScreen } from './screens/RosterScreen';
 import { MembersScreen } from './screens/MembersScreen';
+import { ScoresScreen } from './screens/ScoresScreen';
 import type {
   ExchangeTab,
   Lane,
   LeagueTab,
   Member,
+  MembersTab,
   OptionKey,
   Ranked,
   ResultView,
@@ -51,7 +53,7 @@ import type {
   Section,
   Tier,
 } from './types';
-import { EXCHANGE_TABS, LEAGUE_TABS } from './types';
+import { EXCHANGE_TABS, LEAGUE_TABS, MEMBERS_TABS } from './types';
 
 const APP_TITLE = '9FRAME';
 
@@ -60,6 +62,7 @@ const SECTION_TITLES: Record<Exclude<Section, 'home'>, string> = {
   meetup: '정모 팀짜기',
   flash: '번개 팀짜기',
   exchange: '교류전',
+  members: '회원관리',
 };
 
 const TOAST_MS = 1800;
@@ -102,6 +105,8 @@ export default function App() {
   const [exchangeTabState, setExchangeTabState] = useState<ExchangeTab>(
     initialRoute?.tab ?? 'main',
   );
+  // 회원관리는 누구나 볼 수 있는 점수관리부터.
+  const [membersTabState, setMembersTabState] = useState<MembersTab>('scores');
 
   const meetups = useMeetups();
   /**
@@ -439,6 +444,7 @@ export default function App() {
   const openSection = (section: Exclude<Section, 'home'>) => {
     if (section === 'league') setLeagueTabState('main');
     if (section === 'exchange') setExchangeTabState('main');
+    if (section === 'members') setMembersTabState('scores');
     /*
      * 정모와 번개는 같은 화면을 쓰고 모드만 다르다 — 들어가는 순간 모드를
      * 맞춰 둬야, 명단 화면이 어느 쪽 데이터를 들고 있는지 헷갈리지 않는다.
@@ -623,8 +629,6 @@ export default function App() {
     setState((s) => ({
       ...loadState(),
       section: s.section,
-      // 회원등록은 정모에만 있으므로 번개로 가져가지 않는다.
-      screen: s.screen === 'members' ? 'roster' : s.screen,
     }));
     return true;
   };
@@ -804,10 +808,7 @@ export default function App() {
   );
 
   // ── Bottom bar wiring ──────────────────────────────────────
-  /** 회원등록 is the operator's, and only in 정모. */
-  const canRegister = state.section === 'meetup' && meetupOn !== null && auth.isAdmin;
-  // 로그아웃하거나 번개로 넘어가면 회원등록 탭이 사라지므로 명단으로 돌린다.
-  const screen: Screen = state.screen === 'members' && !canRegister ? 'roster' : state.screen;
+  const screen: Screen = state.screen;
 
   const ctaLabel = (() => {
     if (screen === 'roster') {
@@ -840,6 +841,16 @@ export default function App() {
   const teams = state.section === 'meetup' || state.section === 'flash';
   const league = state.section === 'league';
   const exchange = state.section === 'exchange';
+  const membersSection = state.section === 'members';
+
+  /** 회원등록은 서버 명단을 바꾸므로 운영자에게만 보인다. */
+  const visibleMembersTabs = useMemo(
+    () => MEMBERS_TABS.filter((t) => !t.adminOnly || auth.isAdmin),
+    [auth.isAdmin],
+  );
+  const membersTab = visibleMembersTabs.some((t) => t.key === membersTabState)
+    ? membersTabState
+    : 'scores';
 
   const visibleLeagueTabs = useMemo(
     () => LEAGUE_TABS.filter((t) => !t.adminOnly || auth.isAdmin),
@@ -1032,7 +1043,7 @@ export default function App() {
           />
         )}
 
-        {teams && screen === 'members' && (
+        {membersSection && membersTab === 'register' && (
           <MembersScreen
             registry={meetups.snapshot.registry}
             registryReady={meetups.snapshot.registryReady}
@@ -1042,6 +1053,15 @@ export default function App() {
             busy={registryBusy}
             onApply={applyImport}
             onSetGender={(id, gender) => void changeGender(id, gender)}
+          />
+        )}
+
+        {membersSection && membersTab === 'scores' && (
+          <ScoresScreen
+            registry={meetups.snapshot.registry}
+            loadState={meetups.state}
+            isAdmin={auth.isAdmin}
+            onNotify={flash}
           />
         )}
 
@@ -1154,11 +1174,22 @@ export default function App() {
         </div>
       )}
 
+      {/* 운영자가 아니면 점수관리 하나뿐이라 탭 자체를 띄우지 않는다. */}
+      {membersSection && visibleMembersTabs.length > 1 && (
+        <div className="app__bottom">
+          <TabBar
+            tabs={visibleMembersTabs}
+            isActive={(key) => membersTab === key}
+            onSelect={setMembersTabState}
+          />
+        </div>
+      )}
+
       {/* The hub has no CTA or tabs — those belong to the feature you are inside. */}
       {teams && (
         <BottomBar
           screen={screen}
-          ctaVisible={screen !== 'history' && screen !== 'members'}
+          ctaVisible={screen !== 'history'}
           ctaLabel={ctaLabel}
           ctaDisabled={
             (screen === 'roster' && (state.roster.length === 0 || attending.length === 0)) ||
@@ -1168,7 +1199,6 @@ export default function App() {
           onCta={onCta}
           onReset={redraw}
           onTab={goTab}
-          showMembers={canRegister}
         />
       )}
     </div>

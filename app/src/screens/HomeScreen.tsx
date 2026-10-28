@@ -35,8 +35,9 @@ const FEATURES: Feature[] = [
     bars: ['#B7791F', '#D69E2E', '#F2D48A'],
   },
   {
-    title: '점수 관리',
-    desc: '게임별 점수 기록과 에버리지 추이',
+    section: 'members',
+    title: '회원관리',
+    desc: '회원등록 · 점수관리',
     bars: ['#FF4A21', '#FF7A5C', '#FFB39F'],
   },
   {

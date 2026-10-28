@@ -1,18 +1,12 @@
 import { TabBar, type TabItem } from './TabBar';
 import type { Screen } from '../types';
 
-export type TeamTab = 'roster' | 'draw' | 'history' | 'members';
+export type TeamTab = 'roster' | 'draw' | 'history';
 
 const TABS: readonly TabItem<TeamTab>[] = [
   { key: 'roster', label: '명단' },
   { key: 'draw', label: '배정' },
   { key: 'history', label: '기록' },
-];
-
-/** 정모 운영자에게만 보이는 탭. */
-const TABS_WITH_MEMBERS: readonly TabItem<TeamTab>[] = [
-  ...TABS,
-  { key: 'members', label: '회원등록' },
 ];
 
 interface Props {
@@ -24,8 +18,6 @@ interface Props {
   onCta: () => void;
   onReset: () => void;
   onTab: (key: TeamTab) => void;
-  /** Adds 회원등록 — 정모 with the operator signed in. */
-  showMembers: boolean;
 }
 
 export function BottomBar({
@@ -37,7 +29,6 @@ export function BottomBar({
   onCta,
   onReset,
   onTab,
-  showMembers,
 }: Props) {
   return (
     <div className="app__bottom">
@@ -54,7 +45,7 @@ export function BottomBar({
         </div>
       )}
       <TabBar
-        tabs={showMembers ? TABS_WITH_MEMBERS : TABS}
+        tabs={TABS}
         // 결과 화면은 배정 탭의 연장선이므로 배정 탭이 켜진 상태로 둔다.
         isActive={(key) => screen === key || (key === 'draw' && screen === 'result')}
         onSelect={onTab}
