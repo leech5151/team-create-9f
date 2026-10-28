@@ -1,11 +1,12 @@
 import { useMemo, useRef, useState } from 'react';
 import type { Gender, Member } from '../types';
 import {
-  RECENT_GAMES,
   avgLabel,
   birthLabel,
   byActivity,
   parseRecordSheet,
+  periodMonths,
+  periodRange,
   planImport,
   type ImportPlan,
   type RegistryMember,
@@ -97,7 +98,7 @@ export function MembersScreen({
       <div className="registryImport">
         <div className="registryImport__text">
           칠텐 기록등록 양식(.xlsx)을 가져오면 회원 명단을 새로 만들어요. 번호로 같은 회원을 찾고,
-          점수는 최근 {RECENT_GAMES}게임 평균으로 정해요.
+          점수는 엑셀에 담긴 기간(보통 3개월)의 전체 게임 평균으로 정해요.
           <br />
           게스트·신입은 명단 화면에서 직접 입력하고, 여기에는 올라가지 않아요.
         </div>
@@ -126,7 +127,11 @@ export function MembersScreen({
 
         {plan && (
           <div className="registryPlan">
-            <div className="registryPlan__file">{plan.fileName}</div>
+            <div className="registryPlan__file">
+              {plan.fileName}
+              {plan.plan.period &&
+                ` · ${periodRange(plan.plan.period)} (${periodMonths(plan.plan.period)}개월)`}
+            </div>
             <div className="registryPlan__counts">
               <span>
                 전체 <b>{plan.plan.rows.length}</b>명

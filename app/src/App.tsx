@@ -637,9 +637,13 @@ export default function App() {
   const applyImport = async (plan: ImportPlan) => {
     setRegistryBusy(true);
     try {
-      await importRegistry(plan.rows, plan.removedIds);
+      const { periodSaved } = await importRegistry(plan.rows, plan.removedIds, plan.period);
       await meetups.refresh();
-      flash(`회원 ${plan.rows.length}명을 반영했어요`);
+      flash(
+        periodSaved
+          ? `회원 ${plan.rows.length}명을 반영했어요`
+          : `회원 ${plan.rows.length}명을 반영했어요 · 기간은 migration-014 실행 후 저장돼요`,
+      );
     } catch (e) {
       flash(e instanceof Error ? e.message : '회원 명단 저장에 실패했어요');
     } finally {
@@ -1060,6 +1064,7 @@ export default function App() {
           <ScoresScreen
             registry={meetups.snapshot.registry}
             loadState={meetups.state}
+            period={meetups.snapshot.registryPeriod}
             isAdmin={auth.isAdmin}
             onNotify={flash}
           />

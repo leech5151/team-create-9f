@@ -1,6 +1,6 @@
 import { supabase } from '../lib/supabase';
 import type { Gender, HistoryEntry, Member } from '../types';
-import type { RegistryMember } from './registry';
+import type { RegistryMember, SheetPeriod } from './registry';
 
 /**
  * Supabase access for 정모 (정기모임).
@@ -44,6 +44,8 @@ export interface MeetupSnapshot {
    * 회원 명단 is unavailable, and 회원등록 says why.
    */
   registryReady: boolean;
+  /** 마지막으로 가져온 엑셀의 기간 — null before migration-014 or any import. */
+  registryPeriod: SheetPeriod | null;
   /** Finished games per 정모 — the 기록 screen. */
   games: MeetupGame[];
   /** False when the server predates migration-012; 기록 is then not shared. */
@@ -61,6 +63,7 @@ export const EMPTY_MEETUP_SNAPSHOT: MeetupSnapshot = {
   attendees: [],
   registry: [],
   registryReady: true,
+  registryPeriod: null,
   games: [],
   gamesReady: true,
 };
@@ -100,7 +103,7 @@ function check<T>(result: { data: T | null; error: { message: string } | null })
 export async function fetchMeetupSnapshot(): Promise<MeetupSnapshot> {
   const db = client();
 
-  const [meetups, members, attendees, registry, games] = await Promise.all([
+  const [meetups, members, attendees, registry, games, info] = await Promise.all([
     db.from('meetups').select('id,met_on,title,lane_count,first_lane').order('met_on', {
       ascending: false,
     }),
@@ -113,6 +116,8 @@ export async function fetchMeetupSnapshot(): Promise<MeetupSnapshot> {
       .select('id,name,gender,avg,record_no,birth,games,last_played')
       .eq('registered', true),
     db.from('meetup_games').select('meetup_id,game,first_lane,lanes').order('game'),
+    // 없어도 그만 — 점수관리에 기간만 안 나온다.
+    db.from('meetup_registry_info').select('sheet_from,sheet_to').eq('id', 1).maybeSingle(),
   ]);
   const registryReady = registry.error?.code !== UNDEFINED_COLUMN;
   const gamesReady = games.error?.code !== UNDEFINED_TABLE;
@@ -150,6 +155,7 @@ export async function fetchMeetupSnapshot(): Promise<MeetupSnapshot> {
         }))
       : [],
     registryReady,
+    registryPeriod: info.data ? { from: info.data.sheet_from, to: info.data.sheet_to } : null,
     games: gamesReady
       ? check(games).map((r) => ({
           meetupId: r.meetup_id,
@@ -283,7 +289,8 @@ export async function saveMeetup(draft: MeetupDraft): Promise<string> {
 export async function importRegistry(
   rows: readonly RegistryMember[],
   unregisterIds: readonly string[],
-): Promise<void> {
+  period: SheetPeriod | null,
+): Promise<{ periodSaved: boolean }> {
   const db = client();
 
   if (rows.length > 0) {
@@ -313,6 +320,23 @@ export async function importRegistry(
       .in('id', unregisterIds.slice(i, i + 100));
     if (error) throw new Error(error.message);
   }
+
+  if (!period) return { periodSaved: true };
+  const { error } = await db
+    .from('meetup_registry_info')
+    .upsert(
+      {
+        id: 1,
+        sheet_from: period.from,
+        sheet_to: period.to,
+        imported_at: new Date().toISOString(),
+      },
+      { onConflict: 'id' },
+    );
+  // 테이블이 없으면 명단은 그대로 두고 기간만 빠진다.
+  if (error?.code === UNDEFINED_TABLE) return { periodSaved: false };
+  if (error) throw new Error(error.message);
+  return { periodSaved: true };
 }
 
 /** The sheet has no gender column, so it is set by hand on 회원등록. */

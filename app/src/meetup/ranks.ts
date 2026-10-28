@@ -14,7 +14,7 @@ export interface Rank {
 }
 
 /** Score bands, highest first: a member gets the first band whose floor they reach. */
-const RANKS: readonly (Rank & { min: number })[] = [
+export const RANKS: readonly (Rank & { min: number })[] = [
   { min: 220, label: '챌린저', color: '#E0A100', icon: 'crown' },
   { min: 200, label: '마스터', color: '#8E44D9', icon: 'star' },
   { min: 180, label: '다이아', color: '#2F7CF6', icon: 'gem' },
@@ -23,6 +23,17 @@ const RANKS: readonly (Rank & { min: number })[] = [
   { min: 120, label: '실버', color: '#8A96A3', icon: 'shield' },
   { min: 0, label: '브론즈', color: '#B0703A', icon: 'shield' },
 ];
+
+/** 기준표는 챌린저~플래티넘 한 줄, 골드~브론즈 한 줄로 나눈다. */
+export const LEGEND_FIRST_ROW = 4;
+
+/** "200~220" — the band as the club writes it; the top and bottom are open. */
+export const rangeLabel = (i: number): string => {
+  const min = RANKS[i]!.min;
+  const above = RANKS[i - 1]?.min;
+  if (above === undefined) return `${min}~`;
+  return min === 0 ? `~${above}` : `${min}~${above}`;
+};
 
 const BRONZE = RANKS[RANKS.length - 1] as Rank;
 

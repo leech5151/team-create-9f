@@ -31,8 +31,36 @@ export interface RegistryMember extends Member {
   lastPlayed: string | null;
 }
 
-/** Average over the latest games only — the sheet goes back years. */
-export const RECENT_GAMES = 12;
+/**
+ * The span of games the sheet holds — the club exports about three months, and
+ * every game in it counts toward the average.
+ */
+export interface SheetPeriod {
+  /** ISO dates of the first and last game anyone bowled. */
+  from: string;
+  to: string;
+}
+
+/** Whole months the period covers, at least one — 86 days is 3. */
+export const periodMonths = (p: SheetPeriod): number => {
+  const days = (Date.parse(p.to) - Date.parse(p.from)) / 86_400_000 + 1;
+  return Math.max(1, Math.round(days / 30.44));
+};
+
+/** "26.08.01~26.10.26" */
+export const periodRange = (p: SheetPeriod): string =>
+  `${p.from.slice(2).replace(/-/g, '.')}~${p.to.slice(2).replace(/-/g, '.')}`;
+
+/** First and last game across the sheet; null when nobody bowled. */
+export function sheetPeriod(sheet: readonly RecordRow[]): SheetPeriod | null {
+  let from: string | null = null;
+  let to: string | null = null;
+  for (const r of sheet) {
+    if (r.firstPlayed && (from === null || r.firstPlayed < from)) from = r.firstPlayed;
+    if (r.lastPlayed && (to === null || r.lastPlayed > to)) to = r.lastPlayed;
+  }
+  return from && to ? { from, to } : null;
+}
 
 const MAX_SCORE = 300;
 
@@ -50,9 +78,10 @@ export interface RecordRow {
   recordNo: number;
   name: string;
   birth: string | null;
-  /** Mean of the last `RECENT_GAMES` scores to one decimal; 0 with no games. */
+  /** Mean of every score in the sheet, to one decimal; 0 with no games. */
   avg: number;
   games: number;
+  firstPlayed: string | null;
   lastPlayed: string | null;
 }
 
@@ -113,10 +142,9 @@ export function parseRecordSheet(rows: SheetRows): RecordRow[] {
       const score = Number(cells.get(c));
       if (Number.isFinite(score) && score > 0 && score <= MAX_SCORE) played.push([date, score]);
     }
-    const recent = played.slice(-RECENT_GAMES);
-    // 소수점 한 자리까지 — 183.4
-    const avg = recent.length
-      ? Math.round((recent.reduce((s, [, v]) => s + v, 0) / recent.length) * 10) / 10
+    // 엑셀에 담긴 기간 전체의 평균, 소수점 한 자리까지 — 183.4
+    const avg = played.length
+      ? Math.round((played.reduce((s, [, v]) => s + v, 0) / played.length) * 10) / 10
       : 0;
 
     out.push({
@@ -125,6 +153,7 @@ export function parseRecordSheet(rows: SheetRows): RecordRow[] {
       birth,
       avg,
       games: played.length,
+      firstPlayed: played.length ? isoDate(played[0]![0]) : null,
       lastPlayed: played.length ? isoDate(played[played.length - 1]![0]) : null,
     });
   }
@@ -141,6 +170,8 @@ export interface ImportPlan {
   carried: number;
   /** Sheet members a re-import no longer lists — unregistered, not deleted. */
   removedIds: string[];
+  /** What the averages cover, shown on 점수관리. */
+  period: SheetPeriod | null;
 }
 
 /** The sheet row a name match goes to: of same-named rows, the one that bowled last. */
@@ -235,5 +266,12 @@ export function planImport(
 
   const kept = new Set([...rows, ...carried].map((r) => r.id));
   const removedIds = current.filter((m) => !kept.has(m.id)).map((m) => m.id);
-  return { rows: [...rows, ...carried], added, updated, carried: carried.length, removedIds };
+  return {
+    rows: [...rows, ...carried],
+    added,
+    updated,
+    carried: carried.length,
+    removedIds,
+    period: sheetPeriod(sheet),
+  };
 }

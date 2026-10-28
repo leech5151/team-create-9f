@@ -1,10 +1,19 @@
 import { useMemo, useState } from 'react';
-import { RECENT_GAMES, avgLabel, type RegistryMember } from '../meetup/registry';
+import {
+  avgLabel,
+  periodMonths,
+  periodRange,
+  type RegistryMember,
+  type SheetPeriod,
+} from '../meetup/registry';
 import {
   HIGH_AVG,
   ICON_PATHS,
+  LEGEND_FIRST_ROW,
+  RANKS,
   byScore,
   gamesLabel,
+  rangeLabel,
   rankOf,
   scored,
   type Rank,
@@ -15,6 +24,8 @@ import type { LoadState } from '../league/useLeague';
 interface Props {
   registry: readonly RegistryMember[];
   loadState: LoadState;
+  /** 평균이 담은 엑셀 기간 — 모르면 null. */
+  period: SheetPeriod | null;
   /** 운영자만 전체 목록을 이미지로 받는다. */
   isAdmin: boolean;
   onNotify: (message: string) => void;
@@ -41,7 +52,7 @@ function RankBadge({ rank }: { rank: Rank }) {
  * 회원관리 › 점수관리 — the 회원 명단 ranked by average, readable by everyone.
  * Scores come from the last 회원등록 import.
  */
-export function ScoresScreen({ registry, loadState, isAdmin, onNotify }: Props) {
+export function ScoresScreen({ registry, loadState, period, isAdmin, onNotify }: Props) {
   const [query, setQuery] = useState('');
   const [saving, setSaving] = useState(false);
   const ranked = useMemo(() => registry.slice().sort(byScore), [registry]);
@@ -52,7 +63,7 @@ export function ScoresScreen({ registry, loadState, isAdmin, onNotify }: Props) 
   const download = async () => {
     setSaving(true);
     try {
-      await downloadScoreImage(ranked);
+      await downloadScoreImage(ranked, period);
     } catch (e) {
       onNotify(e instanceof Error ? e.message : '이미지 저장에 실패했어요');
     } finally {
@@ -65,8 +76,23 @@ export function ScoresScreen({ registry, loadState, isAdmin, onNotify }: Props) 
       <div className="eyebrow">회원관리</div>
       <div className="title">점수관리</div>
       <div className="histSub">
-        최근 {RECENT_GAMES}게임 평균 순이에요.
-        {isAdmin && ' 점수는 회원등록에서 엑셀을 가져오면 갱신돼요.'}
+        {period
+          ? `최근 ${periodMonths(period)}개월 게임 평균 순이에요 (${periodRange(period)}).`
+          : '게임 평균 순이에요.'}
+      </div>
+
+      {/* 등급 기준표 — 저장 이미지 맨 위와 같은 내용. */}
+      <div className="rankLegend">
+        {[RANKS.slice(0, LEGEND_FIRST_ROW), RANKS.slice(LEGEND_FIRST_ROW)].map((row, r) => (
+          <div className="rankLegend__row" key={r}>
+            {row.map((rank, k) => (
+              <span className="rankLegend__item" key={rank.label}>
+                <RankBadge rank={rank} />
+                <span className="rankLegend__range">{rangeLabel(r * LEGEND_FIRST_ROW + k)}</span>
+              </span>
+            ))}
+          </div>
+        ))}
       </div>
 
       <div className="registryHead">
