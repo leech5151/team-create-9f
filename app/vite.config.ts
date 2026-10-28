@@ -14,7 +14,8 @@ export default defineConfig({
   plugins: [
     react(),
     VitePWA({
-      registerType: 'autoUpdate',
+      // 새 빌드는 바로 덮어쓰지 않고 기다린다 — useAppUpdate 가 언제 적용할지 정한다.
+      registerType: 'prompt',
       // Serve the SW in `npm run dev` too, so install/offline can be tested locally.
       devOptions: { enabled: true, type: 'module' },
       includeAssets: ['apple-touch-icon.png', 'favicon-32.png'],

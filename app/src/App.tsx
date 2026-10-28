@@ -7,6 +7,7 @@ import { MemberSheet, type MemberEdit } from './components/MemberSheet';
 import { RollOverlay } from './components/RollOverlay';
 import { ShareSheet } from './components/ShareSheet';
 import { useInstallPrompt } from './hooks/useInstallPrompt';
+import { useAppUpdate } from './hooks/useAppUpdate';
 import { useVisualViewport } from './hooks/useVisualViewport';
 import { useBackGuard, useDismissible } from './hooks/useBackStack';
 import { useAdminAuth } from './league/useAdminAuth';
@@ -93,6 +94,7 @@ export default function App() {
   /** Pre-delete snapshot, restored by the toast's 실행 취소. */
   const undoBuffer = useRef<PersistedState | null>(null);
   const installPrompt = useInstallPrompt();
+  const appUpdate = useAppUpdate();
   // 키보드가 올라와도 시트가 그 위에 남도록 보이는 뷰포트를 CSS 로 내보낸다.
   useVisualViewport();
   const auth = useAdminAuth();
@@ -917,6 +919,17 @@ export default function App() {
    */
   const showInstall = installPrompt.installable && state.section === 'home';
 
+  /*
+   * 새 빌드: 홈에서는 하던 일이 없으니 바로 바꾼다. 기능 안에서는 배정·입력을
+   * 날리지 않도록 버튼만 띄우고, 누르거나 홈으로 나오면 그때 적용한다.
+   */
+  const { ready: updateReady, apply: applyUpdate } = appUpdate;
+  useEffect(() => {
+    if (updateReady && state.section === 'home') applyUpdate();
+    // apply 는 렌더마다 새로 만들어지지만 하는 일은 같다.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [updateReady, state.section]);
+
   return (
     <div className="app" data-dark={boardMode}>
       <div className="app__scroll">
@@ -932,6 +945,11 @@ export default function App() {
             </button>
           )}
           <div className="appBar__right">
+            {appUpdate.ready && (
+              <button type="button" className="updatePill" onClick={appUpdate.apply}>
+                새 버전 적용
+              </button>
+            )}
             {showInstall && (
               <InstallPill
                 onClick={() => {

@@ -4999,6 +4999,18 @@ input {
 
 /* Centred in the viewport: the hub has no bottom bar to anchor to, and an
    actionable undo needs to be where the eye already is. */
+/* 새 빌드가 받아졌을 때 — 눌러야 다시 불러온다. */
+.updatePill {
+  height: 30px;
+  padding: 0 12px;
+  border-radius: 999px;
+  background: #ff4a21;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
 .toast {
   position: absolute;
   left: 50%;

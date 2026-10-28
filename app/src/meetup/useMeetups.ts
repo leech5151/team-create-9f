@@ -51,6 +51,12 @@ export function useMeetups(): MeetupData {
 
   useEffect(() => {
     void refresh();
+    // 홈 화면 앱은 껐다 켜지 않고 다시 앞으로 오므로, 그때마다 새로 받는다.
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') void refresh();
+    };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => document.removeEventListener('visibilitychange', onVisible);
   }, [refresh]);
 
   return { snapshot, state, error, refresh };
